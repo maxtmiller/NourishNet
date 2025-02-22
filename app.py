@@ -397,23 +397,31 @@ def items():
     else:
         items = list(items_collection.find())
 
+    business_ids = {item.get("business_id") for item in items if item.get("business_id")}
+    
+    businesses = {b["_id"]: b for b in businesses_collection.find({"_id": {"$in": list(business_ids)}})}
+
+    cur_business = businesses_collection.find_one({"_id": ObjectId(cur_business_id)})
+    cur_address = cur_business.get("address", "No address found") if cur_business else "No address found"
+
+    distance_cache = {}
+
     for item in items:
         business_id = item.get("business_id")
-        if business_id:
-            business = businesses_collection.find_one({"_id": business_id})
-            if business:
-                address = business.get("address", "No address found")
-                cur_business = businesses_collection.find_one({"_id": ObjectId(cur_business_id)})
-                cur_address = cur_business.get("address", "No address found")
-                if address == "No address found" or cur_address == "No address found":
-                    print(f"Item: {item['name']} | Business: {business.get('name', 'Unknown')} | Address not found")
-                    item["distance"] = None
+        business = businesses.get(business_id)
+
+        if business:
+            address = business.get("address", "No address found")
+
+            if address == "No address found" or cur_address == "No address found":
+                item["distance"] = None
+            else:
+                if address in distance_cache:
+                    item["distance"] = distance_cache[address]
                 else:
                     distance = get_distance(cur_address, address)
+                    distance_cache[address] = distance
                     item["distance"] = distance
-            else:
-                print(f"Item: {item['name']} | Business not found")
-                item["distance"] = None
         else:
             item["distance"] = None
     
