@@ -130,7 +130,12 @@ def register():
     db = conn.cursor()
 
     if request.method == "POST":
-
+        name = request.form.get('name')
+        number = request.form.get('number')
+        number2 = request.form.get('number2')
+        address = request.form.get('address')
+        city = request.form.get('city')
+        postal_code = request.form.get('postal-code')
         new_email = request.form.get("email")
         new_username = request.form.get("username")
         new_password = request.form.get("password")
@@ -154,7 +159,7 @@ def register():
             conn.close()
             return render_template("register.html", error=error)
         
-        # Ensure follows the correct format
+        # Ensure correct format is followed
         elif valid_email(new_email) == False:
             error = "Invalid email provided!"
             conn.close()
@@ -190,7 +195,19 @@ def register():
             conn.close()
             return render_template("register.html", error=error)
 
-        # Hashes password when before inserting into users table
+        # Ensure Business Registration Number is valid
+        elif not number.isdigit() or len(number) < 1:
+            error = "Invalid Business Registration Number!"
+            conn.close()
+            return render_template("register.html", error=error)
+
+        # Ensure Postal Code is valid
+        elif not postal_code.isdigit() or len(postal_code) != 6:
+            error = "Postal Code should be 6 digits!"
+            conn.close()
+            return render_template("register.html", error=error)
+
+        # Hashes password before inserting into users table
         hash = generate_password_hash(new_password, method='pbkdf2', salt_length=16)
 
         db.execute("INSERT INTO USERS (email, username, hash, auto_generated) VALUES(?, ?, ?, ?)", (new_email, new_username, hash, False))
@@ -207,7 +224,7 @@ def register():
     else:
         conn.close()
         return render_template("register.html")
-
+        
 
 @app.route("/logout")
 def logout():
