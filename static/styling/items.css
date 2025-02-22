@@ -22,5 +22,6 @@
 /* Make the business-list section scrollable */
 #item-list {
     max-height: 500px; /* Adjust the height as needed */
+    height: 500px;
     overflow-y: auto;
 }

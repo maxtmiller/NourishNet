@@ -1,0 +1,14 @@
+<ul class="list-group">
+    {% for business in businesses %}
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+            <div>
+                <h5>{{ business.name }}</h5>
+                <p>{{ business.description }}</p>
+            </div>
+            <a href="/apply/{{ business._id }}" class="btn btn-success">Apply to Join</a>
+        </li>
+    {% endfor %}
+</ul>
+{% if not businesses %}
+    <p>No businesses found. Try searching again!</p>
+{% endif %}

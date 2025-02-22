@@ -72,7 +72,7 @@
                 <!-- Hidden field to store business_id -->
                 <input type="hidden" name="business_id" value="{{ business_id }}">
         
-                <button type="submit" class="btn btn-primary">Add Item</button>
+                <button type="submit" class="btn">Add Item</button>
             </form>
         </section>        
 
@@ -130,8 +130,8 @@
                                 <td>{{ member.name }}</td>
                                 <td>{{ member.email }}</td>
                                 <td>
-                                    <a href="/edit-member/{{ member.id }}" class="btn btn-warning">Edit</a>
-                                    <a href="/remove-member/{{ member.id }}" class="btn btn-danger">Remove</a>
+                                    <a href="/edit-member/{{ member.id }}" class="btn btn-secondary">Edit</a>
+                                    <a href="/remove-member/{{ member.id }}" class="btn btn-primary">Remove</a>
                                 </td>
                             </tr>
                         {% endfor %}
@@ -139,6 +139,54 @@
                 </table>
             </div>
         </section>
+
+        <!-- Manage Food Requests Section -->
+        <section class="section manage-food-requests">
+            <h3>Manage Food Requests from Food Banks</h3>
+            <p>Review and manage requests for food items from food banks.</p>
+            {% if requests %}
+                <div class="food-requests">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Item Name</th>
+                                <th>Food Bank Name</th>
+                                <th>Quantity</th>
+                                <th>Status</th>
+                                <th>Food Bank Address</th>
+                                <th>Distance</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for request in requests %}
+                                <tr>
+                                    <td>{{ request.item_name }}</td>
+                                    <td>{{ request.food_bank_name }}</td>
+                                    <td>{{ request.quantity }}</td>
+                                    <td>{{ request.status }}</td>
+                                    <td>{{ request.food_bank_address }}</td>
+                                    <td>{{ request.distance }}</td>
+                                    {% if request.status == "Pending" %}
+                                        <td>
+                                            <a href="/manage-requests/accept/{{ request.id }}" class="btn btn-secondary">Accept</a>
+                                            <a href="/manage-requests/decline/{{ request.id }}" class="btn btn-primary">Decline</a>
+                                        </td>
+                                    {% else %}
+                                    <td>
+                                        <a href="/manage-requests/confirm/{{ request.id }}" class="btn btn-secondary">Confirm Delivery</a>
+                                    </td>
+                                    {% endif %}
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p>No food requests found.</p>
+            {% endif %}
+        </section>
+
 
         <!-- Communicate with Food Banks Section -->
         <section class="section communicate">
@@ -158,7 +206,7 @@
                         <label for="message">Your Message</label>
                         <textarea class="form-control" id="message" name="message" rows="3" required></textarea>
                     </div>
-                    <button type="submit" class="btn btn-primary">Send Message</button>
+                    <button type="submit" class="btn">Send Message</button>
                 </form>
             </div>
         </section>

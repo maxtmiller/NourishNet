@@ -168,23 +168,23 @@ nav {
 
 
 .btn-secondary {
-    background-color: #0bbd29;
-    border-color: #0bbd29;
+    background-color: #0bbd29!important ;
+    border-color: #0bbd29!important ;
 }
 
 .btn-sedondary:hover {
-    background-color: #129a29;
-    border-color: #129a29;
+    background-color: #129a29!important ;
+    border-color: #129a29!important ;
 }
 
 .btn-primary {
-    background-color: #f33a33;
-    border-color: #f33a33;
+    background-color: #f33a33!important ;
+    border-color: #f33a33!important ;
 }
 
 .btn-primary:hover {
-    background-color: #bc2520;
-    border-color: #bc2520;
+    background-color: #bc2520!important ;
+    border-color: #bc2520!important ;
 }
 
 #confirmation {
@@ -334,4 +334,8 @@ th, td {
 .text-steps {
     line-height: 1.2;
     text-align: justify;
+}
+
+.request-btn {
+    margin-top: 10px;
 }

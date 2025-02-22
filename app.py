@@ -46,14 +46,7 @@ db = get_mongodb_connection()
 users_collection = db["users"]
 businesses_collection = db["businesses"]
 items_collection = db["items"]
-# distributor_collection = db["distributors"]
-
-def get_db_connection():
-    """Create and return a new database connection."""
-    conn = sqlite3.connect("static/sql/database.db", check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-
-    return conn
+chats_collection = db["chats"]
 
 
 @app.after_request
@@ -195,6 +188,8 @@ def register():
                     "reg_id": reg_id,
                     "tax_id": tax_id,
                     "fs_cert": True if food_safety_cert == 'yes' else False,
+                    "orders": 0,
+                    "value_donated": 0,
                 }
                 result = businesses_collection.insert_one(new_business)
                 business_id = result.inserted_id
@@ -256,7 +251,7 @@ def home():
     return render_template("business-home.html", user=user, business=None)
 
 
-@app.route("/business-join")
+@app.route("/business-join", methods=["GET"])
 @login_required
 def business_join():
     """Business Apply Page"""
@@ -277,6 +272,10 @@ def business_join():
         }))
     else:
         businesses = list(businesses_collection.find())
+    
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        businesses_html = render_template('business-list.html', businesses=businesses, user=user)
+        return {'businesses_html': businesses_html}
     
     return render_template('business-join.html', user=user, business=business_id, businesses=businesses)
 
@@ -344,7 +343,26 @@ def business_dashboard():
                 "id": applicant_id
             })
 
-    return render_template("business-dashboard.html", user=user, business=business, applications=applications, members=members)
+    requests = []
+
+    for request in business.get('requests', []):
+        item = items_collection.find_one({"_id": request.get('item_id')})
+        if item:
+            bus_id = request.get('bus_id')
+            if bus_id:
+                foodbank = businesses_collection.find_one({"_id": bus_id})
+                if foodbank:
+                    requests.append({
+                        "item_name": item.get('name'),
+                        "food_bank_name": foodbank.get('name'),
+                        "quantity": request.get('quantity'),
+                        "food_bank_address": foodbank.get('address'),
+                        "distance": get_distance(business.get('address'), foodbank.get('address')),
+                        "status": request.get('status'),
+                        "id": request.get('request_id')
+                    })
+
+    return render_template("business-dashboard.html", user=user, business=business, applications=applications, members=members, requests=requests)
 
 
 @app.route('/manage-applications/<decision>/<user_id>', methods=['GET'])
@@ -375,16 +393,66 @@ def manage_applications(decision, user_id):
     return redirect("/business-dashboard")
 
 
-@app.route("/items")
+@app.route('/manage-requests/<decision>/<request_id>', methods=['GET'])
+def manage_requests(decision, request_id):
+    """Manage requests for a business"""
+
+    request = businesses_collection.find_one(
+        {"_id": ObjectId(session["business_id"])},
+        {"requests": {"$elemMatch": {"request_id": ObjectId(request_id)}}}
+    )
+
+    request = request.get('requests', [])[0]
+    item_id = request.get('item_id')
+    quantity = request.get('quantity')
+
+    if decision == 'accept':
+        businesses_collection.update_one(
+            {"_id": ObjectId(session["business_id"])},
+            {"$set": {
+                "requests.$[elem].status": "Accepted"
+            }},
+            array_filters=[{"elem.request_id": ObjectId(request_id)}]
+        )
+        flash("Request accepted successfully!")
+    elif decision == 'decline':
+        item_quantity = items_collection.find_one({"_id": item_id}).get('quantity', 0)
+        items_collection.update_one(
+            {"_id": item_id},
+            {"$set": {"quantity": item_quantity+quantity}}
+        )
+        businesses_collection.update_one(
+            {"_id": ObjectId(session["business_id"])},
+            {"$pull": {"requests": {"request_id": ObjectId(request_id)}}}
+        )
+        flash("Request rejected successfully!")
+    elif decision == 'confirm':
+        businesses_collection.update_one(
+            {"_id": ObjectId(session["business_id"])},
+            {"$pull": {"requests": {"request_id": ObjectId(request_id)}}}
+        )
+        item_cost = items_collection.find_one({"_id": item_id}).get('price', 0)
+        businesses_collection.update_one(
+            {"_id": ObjectId(session["business_id"])},
+            {"$inc": {"value_donated": +quantity*item_cost, "orders": +1}}
+        )
+        flash("Delivery confirmed!")
+    else:
+        flash("Invalid request!")
+    
+    return redirect("/business-dashboard")
+
+
+@app.route("/items", methods=["GET"])
 @login_required
 def items():
     """Display Food Item data"""
-
+    
     user_id = session["user_id"]
     user = users_collection.find_one({"_id": ObjectId(user_id)}, {"_id": 0, "hash": 0})
-
+    
     cur_business_id = session["business_id"]
-
+    
     query = request.args.get('query', '').lower()
     
     if query:
@@ -397,22 +465,24 @@ def items():
     else:
         items = list(items_collection.find())
 
+    items = [item for item in items if item.get("quantity", 0) > 0]
+    
     business_ids = {item.get("business_id") for item in items if item.get("business_id")}
     
     businesses = {b["_id"]: b for b in businesses_collection.find({"_id": {"$in": list(business_ids)}})}
-
+    
     cur_business = businesses_collection.find_one({"_id": ObjectId(cur_business_id)})
     cur_address = cur_business.get("address", "No address found") if cur_business else "No address found"
-
+    
     distance_cache = {}
-
+    
     for item in items:
         business_id = item.get("business_id")
         business = businesses.get(business_id)
-
+    
         if business:
             address = business.get("address", "No address found")
-
+    
             if address == "No address found" or cur_address == "No address found":
                 item["distance"] = None
             else:
@@ -425,7 +495,11 @@ def items():
         else:
             item["distance"] = None
     
-    return render_template("items.html", user=user, items=items, business=business_id)
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        items_html  = render_template('items-list.html', items=items, user=user)
+        return {'items_html': items_html}
+    
+    return render_template("items.html", user=user, items=items, business=cur_business_id)
 
 
 @app.route("/add-item", methods=["POST"])
@@ -458,7 +532,7 @@ def add_item():
         items_collection.insert_one({
             "name": item_name,
             "item_type": item_type,
-            "quantity": quantity,
+            "quantity": int(quantity),
             "allergens": allergens,
             "tags": tags,
             "price": price,
@@ -471,6 +545,47 @@ def add_item():
     
     flash("Failed to add item!")
     return redirect('/business-dashboard')
+
+
+@app.route("/request-item", methods=["GET"])
+@login_required
+def request_item():
+    """Request Food Item"""
+
+    user_id = session["user_id"]
+    user = users_collection.find_one({"_id": ObjectId(user_id)}, {"_id": 0, "hash": 0})
+
+    cur_business_id = session["business_id"]
+
+    item_id = request.args.get('item_id')
+    item_id = ObjectId(item_id)
+    quantity = request.args.get('quantity')
+    quantity = int(quantity)
+
+    item = items_collection.find_one({"_id": item_id})
+    
+    items_collection.update_one(
+        {"_id": item_id},
+        {"$set": {"quantity": int(item.get("quantity"))-quantity}}
+    )
+
+    if not item:
+        flash("Item not found.")
+        return redirect('/items')
+
+    business = businesses_collection.find_one({"_id": item["business_id"]})
+
+    businesses_collection.update_one(
+        {"_id": item["business_id"]},
+        {"$push": {"requests": {"request_id": ObjectId(), "item_id": item_id, "bus_id": ObjectId(cur_business_id), "quantity": quantity, "status": "Pending"}}}
+    )
+
+    if not business:
+        flash("Business not found.")
+        return redirect('/items')
+
+    flash(f"Request for {quantity} {item['name']}s submitted successfully!")
+    return redirect('/items')
 
 
 @app.route("/credit")
@@ -677,7 +792,6 @@ def google_signin():
         existing_user = users_collection.find_one({"email": user_email})
 
         if not existing_user:
-            # Create new user
             email_domain = user_email.split("@")[-1]
             business = businesses_collection.find_one({"email_domain": email_domain})
             
@@ -693,18 +807,17 @@ def google_signin():
             }
 
             insert_result = users_collection.insert_one(new_user)
-            user_id = insert_result.inserted_id  # Get the generated _id
+            user_id = insert_result.inserted_id
             session["business_id"] = str(business["_id"]) if business else None
 
             print("New user inserted with ID:", user_id)
 
         else:
-            user_id = existing_user["_id"]  # Retrieve existing user's _id
+            user_id = existing_user["_id"]
             business_id = existing_user["business_id"]
             session["business_id"] = str(business_id) if business_id else None
 
-        # Store user ID in session
-        session["user_id"] = str(user_id)  # Convert ObjectId to string for session storage
+        session["user_id"] = str(user_id)
 
         return jsonify(success=True)
 

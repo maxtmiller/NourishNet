@@ -5,19 +5,20 @@
 {% endblock %}
 
 {% block main %}
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <div class="container mt-5">
         <h2>Search for Businesses</h2>
         
         <!-- Search Bar -->
         <form method="GET" action="/business-join">
             <div class="input-group mb-4">
-                <input type="text" class="form-control" name="query" placeholder="Search for businesses..." aria-label="Search">
+                <input type="text" class="form-control" id="query" name="query" placeholder="Search for businesses..." aria-label="Search">
                 <button class="btn btn-primary" type="submit">Search</button>
             </div>
         </form>
         
         <h3>Businesses:</h3>
-        <div id="business-list">
+        <div id="business-list" style="max-height: 60vh; overflow-y: auto;">
             <!-- Dynamically populated list of businesses -->
             {% if businesses %}
                 <ul class="list-group">
@@ -36,4 +37,15 @@
             {% endif %}
         </div>
     </div>
+    <script>
+        $(document).ready(function() {
+            $('#query').on('input', function() {
+                let query = $(this).val();
+                
+                $.get('/business-join', { query: query }, function(data) {
+                    $('#business-list').html(data.businesses_html);
+                });
+            });
+        });
+    </script>
 {% endblock %}
