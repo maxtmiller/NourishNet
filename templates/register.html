@@ -10,18 +10,47 @@
         <br>
         <h1>Sign Up</h1>
         <br>
-        <form action="/register" method="post">
+        <form action="/register" method="post" id="registrationForm">
             <div class="mb-3">
-                <input class="form-control mx-auto w-fit" id="email" name="email" placeholder="Set Email" type="email">
+                <input class="form-control mx-auto w-fit" id="name" name="name" placeholder="Name" type="text" required autofocus>
             </div>
             <div class="mb-3">
-                <input autocomplete="off" autofocus class="form-control mx-auto w-fit" id="username" name="username" placeholder="Set Username" type="text">
+                <input class="form-control mx-auto w-fit" id="number" name="number" placeholder="Business Registration Number" type="number" required min="1">
             </div>
             <div class="mb-3">
-                <input class="form-control mx-auto w-fit" id="password" name="password" placeholder="Set Password" type="password">
+                <input class="form-control mx-auto w-fit" id="number2" name="number2" placeholder="Tax Identification Number" type="number" required min="1">
             </div>
             <div class="mb-3">
-                <input class="form-control mx-auto w-fit" id="confirmation" name="confirmation" placeholder="Confirm Password" type="password">
+                <input class="form-control mx-auto w-fit" id="address" name="address" placeholder="Address Line 1" type="text" required>
+            </div>
+            <div class="mb-3">
+                <input class="form-control mx-auto w-fit" id="city" name="city" placeholder="City" type="text" required>
+            </div>
+            <div class="mb-3">
+                <input class="form-control mx-auto w-fit" id="postal-code" name="postal-code" placeholder="Postal Code" type="text" required pattern="\d{6}" title="Postal Code should be 6 digits">
+            </div>
+            <div class="mb-3">
+                <select class="form-control mx-auto w-fit" id="type" name="type" required>
+                    <option value="" disabled selected>Type of Organization</option>
+                    <option value="provider">Restaurant (Provider)</option>
+                    <option value="receiver">Food bank (Receiver)</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <select class="form-control mx-auto w-fit" id="food-safety" name="food-safety" required>
+                    <option value="" disabled selected>Do you have a food safety certification?</option>
+                    <option value="yes">Yes</option>
+                    <option value="no">No</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <input autocomplete="off" class="form-control mx-auto w-fit" id="username" name="username" placeholder="Set Username" type="text" required>
+            </div>
+            <div class="mb-3">
+                <input class="form-control mx-auto w-fit" id="password" name="password" placeholder="Set Password" type="password" required>
+            </div>
+            <div class="mb-3">
+                <input class="form-control mx-auto w-fit" id="confirmation" name="confirmation" placeholder="Confirm Password" type="password" required>
             </div>
             {% if error %}
                 <a id="badEvent">{{error}}</a>
@@ -34,19 +63,19 @@
                 </div>
                 <hr id ="line">
             </div>
-            <a class="signButton" href="/login">Log In</a>
+            <p>Already have an account? <a class="signButton" href="/login">Log In</a></p>
         </form>
         <br>
     </div>
     <script>
-        password.addEventListener('input', function () {
-            showConfirmation()
-        });
-
-        function showConfirmation() {
+        document.getElementById('registrationForm').addEventListener('submit', function(event) {
+            var password = document.getElementById('password');
             var confirmation = document.getElementById('confirmation');
-
-            confirmation.style.display = "block";
-        }
+            // Password confirmation validation
+            if (password.value !== confirmation.value) {
+                event.preventDefault();
+                alert('Passwords do not match!');
+            }
+        });
     </script>
 {% endblock %}

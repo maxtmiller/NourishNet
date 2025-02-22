@@ -120,7 +120,12 @@ def register():
     """Register user"""
 
     if request.method == "POST":
-
+        name = request.form.get('name')
+        number = request.form.get('number')
+        number2 = request.form.get('number2')
+        address = request.form.get('address')
+        city = request.form.get('city')
+        postal_code = request.form.get('postal-code')
         new_email = request.form.get("email")
         new_username = request.form.get("username")
         new_password = request.form.get("password")
@@ -133,7 +138,7 @@ def register():
         if not new_email:
             error = "Must provide email!"
         
-        # Ensure follows the correct format
+        # Ensure correct format is followed
         elif valid_email(new_email) == False:
             error = "Invalid email provided!"
 
@@ -192,7 +197,7 @@ def register():
 
     else:
         return render_template("register.html")
-
+        
 
 @app.route("/logout")
 def logout():
