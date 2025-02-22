@@ -1,0 +1,27 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Food Bank
+{% endblock %}
+
+{% block main %}
+    <div id="mainBody">
+        <div class="container">
+            <h2>Tax Break Progress</h2>
+            <div class="progress-bar">
+                <div class="progress" style="width: 80%;"></div>
+            </div>
+            <p>You have received $12,000 in tax breaks out of a possible $15,000.</p>
+            
+            <h2>Tax Breaks Over Time</h2>
+            <div class="chart">
+                <div class="bar" style="height: 50px;">2021</div>
+                <div class="bar" style="height: 75px;">2022</div>
+                <div class="bar" style="height: 100px;">2023</div>
+                <div class="bar" style="height: 120px;">2024</div>
+            </div>
+        </div>
+        <script>
+        </script>
+    </div>
+{% endblock %}
