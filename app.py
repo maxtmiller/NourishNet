@@ -452,6 +452,12 @@ def items():
     user = users_collection.find_one({"_id": ObjectId(user_id)}, {"_id": 0, "hash": 0})
     
     cur_business_id = session["business_id"]
+
+    cur_business = businesses_collection.find_one({"_id": ObjectId(cur_business_id)})
+    cur_type = cur_business["type"] if cur_business else None
+
+    if cur_type == "provider":
+        return redirect('/business-dashboard')
     
     query = request.args.get('query', '').lower()
     
@@ -471,7 +477,6 @@ def items():
     
     businesses = {b["_id"]: b for b in businesses_collection.find({"_id": {"$in": list(business_ids)}})}
     
-    cur_business = businesses_collection.find_one({"_id": ObjectId(cur_business_id)})
     cur_address = cur_business.get("address", "No address found") if cur_business else "No address found"
     
     distance_cache = {}
