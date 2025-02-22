@@ -1,0 +1,50 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Item Database
+{% endblock %}
+
+{% block main %}
+    <div class="container mt-5" style="max-width: 1200px; height: 60%; margin-top: 100px;">
+        <h2 class="mb-4">Search for Items</h2>
+        
+        <!-- Search Bar -->
+        <form method="GET" action="/items" class="mb-4">
+            <div class="input-group">
+                <input type="text" class="form-control" name="query" placeholder="Search for items..." aria-label="Search">
+                <button class="btn btn-primary" type="submit">Search</button>
+            </div>
+        </form>
+        
+        <h3>Items:</h3>
+        <div id="item-list" class="row">
+            <!-- Dynamically populated list of items -->
+            {% if items %}
+                {% for item in items %}
+                    <div class="col-md-12 mb-4">
+                        <div class="card shadow-sm">
+                            <div class="card-body d-flex justify-content-between align-items-center">
+                                <div class="item-info" style="flex-grow: 1;">
+                                    <h5 class="card-title">{{ item.name }}</h5>
+                                    <h6 class="card-subtitle text-muted mb-2">{{ item.item_type | capitalize }}</h6>
+                                    <p><strong>Description:</strong> {{ item.description }}</p>
+                                    <p><strong>Quantity:</strong> {{ item.quantity }}</p>
+                                    <p><strong>Tags:</strong> 
+                                        {% for tag in item.tags %}
+                                            <span class="badge bg-info">{{ tag }}</span>
+                                        {% endfor %}
+                                    </p>
+                                </div>
+                                <div class="action-btn">
+                                    <button class="btn btn-primary">Take Action</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p>No items found. Try searching again!</p>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}

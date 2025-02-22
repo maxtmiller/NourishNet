@@ -1,0 +1,166 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Business Home
+{% endblock %}
+
+{% block main %}
+    <div id="mainBody">
+        <header>
+            <h1>NourishNet</h1>
+            <h2>Welcome to your business dashboard. Select an option below to manage your operations.</h2>
+        </header>
+
+        <!-- Tax Break Info Section -->
+        <section class="section tax-break">
+            <h3>Tax Break Information</h3>
+            <div class="tax-break-info">
+                <p>Here are some available tax breaks for your business:</p>
+                <ul>
+                    <li><strong>Tax Break 1:</strong> Description of the tax break.</li>
+                    <li><strong>Tax Break 2:</strong> Description of the tax break.</li>
+                    <li><strong>Tax Break 3:</strong> Description of the tax break.</li>
+                </ul>
+                <p>For more details, please contact your accountant or local government office.</p>
+            </div>
+        </section>
+        
+        <!-- Add New Items Section -->
+        <section class="section add-items">
+            <h3>Add New Items to Give Away to Food Banks</h3>
+            <p>Donate food or other items to food banks. Add the items here to manage your contributions.</p>
+            <form method="POST" action="/add-item">
+                <div class="form-group">
+                    <label for="itemName">Item Name</label>
+                    <input type="text" class="form-control" id="itemName" name="item_name" required>
+                </div>
+        
+                <div class="form-group">
+                    <label for="itemType">Item Type</label>
+                    <select class="form-control" id="itemType" name="item_type" required>
+                        <option value="food">Food</option>
+                        <option value="drink">Drink</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+        
+                <div class="form-group">
+                    <label for="itemQuantity">Quantity</label>
+                    <input type="number" class="form-control" id="itemQuantity" name="quantity" required>
+                </div>
+        
+                <div class="form-group">
+                    <label for="allergens">Allergens</label>
+                    <input type="text" class="form-control" id="allergens" name="allergens" placeholder="Enter allergens separated by commas" required>
+                </div>
+        
+                <div class="form-group">
+                    <label for="tags">Tags</label>
+                    <input type="text" class="form-control" id="tags" name="tags" placeholder="Enter tags separated by commas" required>
+                </div>
+        
+                <div class="form-group">
+                    <label for="price">Price (Optional)</label>
+                    <input type="number" class="form-control" id="price" name="price" step="0.01">
+                </div>
+        
+                <div class="form-group">
+                    <label for="description">Description</label>
+                    <textarea class="form-control" id="description" name="description" rows="3" required></textarea>
+                </div>
+        
+                <!-- Hidden field to store business_id -->
+                <input type="hidden" name="business_id" value="{{ business_id }}">
+        
+                <button type="submit" class="btn btn-primary">Add Item</button>
+            </form>
+        </section>        
+
+        <!-- Manage Applications Section -->
+        <section class="section manage-applications">
+            <h3>Manage Business Applications</h3>
+            <p>Review and manage applications from potential members of your business.</p>
+            {% if applications %}
+                <div class="applications">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for application in applications %}
+                                <tr>
+                                    <td>{{ application.name }}</td>
+                                    <td>{{ application.email }}</td>
+                                    <td>Awaiting Decision</td>
+                                    <td>
+                                        <a href="/manage-applications/accept/{{ application.id }}" class="btn btn-success">Approve</a>
+                                        <a href="/manage-applications/reject/{{ application.id }}" class="btn btn-danger">Reject</a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p>No applicants found.</p>
+            {% endif %}
+        </section>
+
+        <!-- Edit Members Section -->
+        <section class="section edit-members">
+            <h3>Edit Current Affiliated Members</h3>
+            <p>Manage the details of your current business members. You can update their roles or remove them from the business.</p>
+            <div class="members">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for member in members %}
+                            <tr>
+                                <td>{{ member.name }}</td>
+                                <td>{{ member.email }}</td>
+                                <td>
+                                    <a href="/edit-member/{{ member.id }}" class="btn btn-warning">Edit</a>
+                                    <a href="/remove-member/{{ member.id }}" class="btn btn-danger">Remove</a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Communicate with Food Banks Section -->
+        <section class="section communicate">
+            <h3>Communicate with Food Banks</h3>
+            <p>Use the chat feature to communicate directly with food banks regarding your donations or needs.</p>
+            <div class="chat-box">
+                <div class="messages">
+                    <div class="message received">
+                        <p><strong>Food Bank A:</strong> Thank you for your donation! We have received 100 items.</p>
+                    </div>
+                    <div class="message sent">
+                        <p><strong>You:</strong> You're welcome! We will continue contributing. Let us know if you need more.</p>
+                    </div>
+                </div>
+                <form method="POST" action="/send-message">
+                    <div class="form-group">
+                        <label for="message">Your Message</label>
+                        <textarea class="form-control" id="message" name="message" rows="3" required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Send Message</button>
+                </form>
+            </div>
+        </section>
+    </div>
+{% endblock %}

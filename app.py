@@ -18,6 +18,7 @@ from google.auth.transport import requests
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 
+from bson import ObjectId
 
 app = Flask(__name__)
 
@@ -31,8 +32,7 @@ def get_mongodb_connection():
     """Create and return a new database connection."""
     with open('./static/cred.json', 'r') as file:
         uri = json.load(file)['mongoURI']
-    client = MongoClient(uri, server_api=ServerApi('1'))
-    # Send a ping to confirm a successful connection
+    client = MongoClient(uri, tlsAllowInvalidCertificates=True)
     try:
         client.admin.command('ping')
         print("Pinged your deployment. You successfully connected to MongoDB!")
@@ -41,6 +41,12 @@ def get_mongodb_connection():
         print(e)
         return None
     
+db = get_mongodb_connection()
+
+users_collection = db["users"]
+businesses_collection = db["businesses"]
+items_collection = db["items"]
+
 def get_db_connection():
     """Create and return a new database connection."""
     conn = sqlite3.connect("static/sql/database.db", check_same_thread=False)
@@ -71,6 +77,7 @@ def before_request():
     return
 
 
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     """Log user in"""
@@ -78,56 +85,39 @@ def login():
     # Clear any user_id
     session.clear()
 
-    conn = get_db_connection()
-    db = conn.cursor()
-
     # User reached route via POST (as by submitting a form via POST)
     if request.method == "POST":
 
-        # Variable for storing error message
         error = None
+        user_input = request.form.get("user")
+        password = request.form.get("password")
 
-        # Ensure username was submitted
-        if not request.form.get("user"):
+        if not user_input:
             error = "Must provide email or username!"
-            conn.close()
-            return render_template("login.html", error=error)
-
-        # Ensure password was submitted
-        elif not request.form.get("password"):
+        elif not password:
             error = "Must provide password!"
-            conn.close()
-            return render_template("login.html", error=error)
+        else:
+            user = users_collection.find_one({"$or": [{"username": user_input}, {"email": user_input}]})
+            if not user or not check_password_hash(user["hash"], password):
+                error = "Invalid username and/or password!"
+            else:
+                business = None
+                if "business_id" in user:
+                    business = businesses_collection.find_one({"_id": user["business_id"]})
 
-        # Query database for username
-        rows = db.execute("SELECT * FROM users WHERE username = ? OR email = ?", (request.form.get("user"), request.form.get("user"))).fetchall()
-
-        # Ensure username exists and password is correct
-        if len(rows) != 1 or not check_password_hash(rows[0]["hash"], request.form.get("password")):
-            error = "Invalid username and/or password!"
-            conn.close()
-            return render_template("login.html", error=error)
-
-        # Remember which user has logged in
-        session["user_id"] = rows[0]["id"]
-
-        # Redirect user to home page
-        print("success")
-        conn.close()
-        return redirect("/")
-
-    # User reached route via GET (as by clicking a link or via redirect)
-    else:
-        conn.close()
-        return render_template("login.html")
+                # Store user session
+                session["user_id"] = str(user["_id"])
+                session["business_id"] = str(business["_id"]) if business else None
+                session["business_name"] = business["name"] if business else None
+                return redirect("/")
+            
+        return render_template("login.html", error=error)
+    return render_template("login.html")
 
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
     """Register user"""
-
-    conn = get_db_connection()
-    db = conn.cursor()
 
     if request.method == "POST":
 
@@ -136,76 +126,71 @@ def register():
         new_password = request.form.get("password")
         new_confirmation = request.form.get("confirmation")
 
-        existing_email = db.execute("SELECT * FROM users WHERE email = ?", (new_email,)).fetchall()
-        existing_username = db.execute("SELECT * FROM users WHERE username = ?", (new_username,)).fetchall()
-
         # Variable for storing error message
         error = None
 
         # Ensure email was submitted
         if not new_email:
             error = "Must provide email!"
-            conn.close()
-            return render_template("register.html", error=error)
-        
-        # Ensure email is not already registered to an account
-        elif len(existing_email) != 0:
-            error = "Account already exists with specified email!"
-            conn.close()
-            return render_template("register.html", error=error)
         
         # Ensure follows the correct format
         elif valid_email(new_email) == False:
             error = "Invalid email provided!"
-            conn.close()
-            return render_template("register.html", error=error)
 
         # Ensure username is provided
         elif not new_username:
             error = "Must provide username!"
-            conn.close()
-            return render_template("register.html", error=error)
-
-        # Ensure username is unique
-        elif len(existing_username) != 0:
-            error = "Username not available!"
-            conn.close()
-            return render_template("register.html", error=error)
 
         # Ensure password was submitted
         elif not new_password:
             error = "Missing password!"
-            conn.close()
-            return render_template("register.html", error=error)
 
         # Ensure passwords match
         elif new_password != new_confirmation:
             error = "Passwords don't match!"
-            conn.close()
-            return render_template("register.html", error=error)
 
         # Ensure password is between 4 and 15 characters
         elif len(new_password) < 4 or len(new_password) > 15:
             error = "Password must be between 4 and 15 characters long!"
-            conn.close()
-            return render_template("register.html", error=error)
+        
+        else:
+            # Check if the username or email already exists in the database
+            existing_user = users_collection.find_one({"$or": [{"username": new_username}, {"email": new_email}]})
 
-        # Hashes password when before inserting into users table
-        hash = generate_password_hash(new_password, method='pbkdf2', salt_length=16)
+            if existing_user:
+                if existing_user["username"] == new_username:
+                    error = "Username not available!"
+                else:
+                    error = "An account already exists with this email!"
+                return render_template("register.html", error=error)
+            else:
+                # If no existing user, create new account
 
-        db.execute("INSERT INTO USERS (email, username, hash, auto_generated) VALUES(?, ?, ?, ?)", (new_email, new_username, hash, False))
-        conn.commit()
+                email_domain = new_email.split("@")[-1]
+                business = businesses_collection.find_one({"email_domain": email_domain})
 
-        rows = db.execute("SELECT * FROM users WHERE username = ?", (request.form.get("username"),)).fetchall()
+                hash_password = generate_password_hash(new_password, method='pbkdf2', salt_length=16)
+                new_user = {
+                    "username": new_username,
+                    "email": new_email,
+                    "hash": hash_password,
+                    "auto_generated": False,
+                    "business_id": business["_id"] if business else None
+                }
+                users_collection.insert_one(new_user)
 
-        session["user_id"] = rows[0]["id"]
+                # Retrieve user again to get their `_id`
+                user = users_collection.find_one({"email": new_email})
 
-        flash("Registered!")
-        conn.close()
-        return redirect("/")
+                # Store user ID in session
+                session["user_id"] = str(user["_id"])  # Convert ObjectId to string
+                session["business_id"] = str(business["_id"]) if business else None
+                flash("Registered!")
+                return redirect("/")
+            
+        return render_template("register.html", error=error)
 
     else:
-        conn.close()
         return render_template("register.html")
 
 
@@ -225,35 +210,212 @@ def logout():
 def home():
     """Main Page"""
 
-    conn = get_db_connection()
-    db = conn.cursor()
+    user_id = session["user_id"]
+    user = users_collection.find_one({"_id": ObjectId(user_id)}, {"_id": 0, "hash": 0})
+
+    business_id = session["business_id"]
+
+    print(business_id)
+
+    if business_id:
+        business = businesses_collection.find_one({"_id": ObjectId(business_id)}, {"_id": 0})
+        return render_template("business-home.html", user=user, business=business)
+
+    return render_template("business-home.html", user=user, business=None)
+
+
+@app.route("/business-join")
+@login_required
+def business_join():
+    """Business Apply Page"""
 
     user_id = session["user_id"]
-    user = db.execute("SELECT * FROM users WHERE id = ?;", (user_id,)).fetchone()
+    user = users_collection.find_one({"_id": ObjectId(user_id)}, {"_id": 0, "hash": 0})
 
-    conn.close()
-    return render_template("home.html", user=user)
+    business_id = session["business_id"]
+
+    query = request.args.get('query', '').lower()
+    
+    if query:
+        businesses = list(businesses_collection.find({
+            "$or": [
+                {"name": {"$regex": query, "$options": "i"}},
+                {"description": {"$regex": query, "$options": "i"}}
+            ]
+        }))
+    else:
+        businesses = list(businesses_collection.find())
+    
+    return render_template('business-join.html', user=user, business=business_id, businesses=businesses)
 
 
-@app.route("/search")
+@app.route('/apply/<business_id>', methods=['GET'])
 @login_required
-def search():
+def apply_to_business(business_id):
+    """Apply to a business"""    
+    user_id = session["user_id"]
+    user = users_collection.find_one({"_id": ObjectId(user_id)}, {"_id": 0, "hash": 0})
+
+    business = businesses_collection.find_one({"_id": ObjectId(business_id)})
+
+    if not business:
+        flash("Business not found.")
+        return redirect('/business-join')
+
+    if user_id in business.get('applicants', []):
+        flash("You have already applied to this business.")
+        return redirect('/business-join')
+
+    businesses_collection.update_one(
+        {"_id": ObjectId(business_id)},
+        {"$push": {"applicants": ObjectId(user_id)}}
+    )
+
+    flash(f"Application to {business['name']} submitted successfully!")
+
+    return redirect('/business-join')
+
+
+@app.route("/business-dashboard")
+@login_required
+def business_dashboard():
+    """Business Dashboard"""
+
+    user_id = session["user_id"]
+    user = users_collection.find_one({"_id": ObjectId(user_id)}, {"_id": 0, "hash": 0})
+
+    if session["business_id"] is None:
+        return redirect('/business-join')
+
+    business = businesses_collection.find_one({"_id": ObjectId(session["business_id"])})
+
+    # Fetch name and email for each applicant from the users collection
+    applications = []
+    
+    for applicant_id in business.get('applicants', []):
+        user = users_collection.find_one({"_id": ObjectId(applicant_id)})
+        if user:
+            applications.append({
+                "name": user.get('username'),
+                "email": user.get('email'),
+                "status": "Pending",
+                "id": applicant_id
+            })
+
+    members = []
+
+    for applicant_id in business.get('affiliated_users', []):
+        user = users_collection.find_one({"_id": ObjectId(applicant_id)})
+        if user:
+            members.append({
+                "name": user.get('username'),
+                "email": user.get('email'),
+                "id": applicant_id
+            })
+
+    return render_template("business-dashboard.html", user=user, business=business, applications=applications, members=members)
+
+
+@app.route('/manage-applications/<decision>/<user_id>', methods=['GET'])
+def manage_applications(decision, user_id):
+    """Manage applications for a business"""
+
+    if decision == 'accept':
+        businesses_collection.update_one(
+            {"_id": ObjectId(session["business_id"])},
+            {"$pull": {"applicants": ObjectId(user_id)}}
+        )
+        businesses_collection.update_one(
+            {"_id": ObjectId(session["business_id"])},
+            {"$push": {"affiliated_users": ObjectId(user_id)}}
+        )
+        users_collection.update_one(
+            {"_id": ObjectId(user_id)},
+            {"$set": {"business_id": ObjectId(session["business_id"])}}
+        )
+        flash("Application accepted successfully!")
+    else:
+        businesses_collection.update_one(
+            {"_id": ObjectId(session["business_id"])},
+            {"$pull": {"applicants": ObjectId(user_id)}}
+        )
+        flash("Application rejected successfully!")
+    
+    return redirect("/business-dashboard")
+
+
+@app.route("/items")
+@login_required
+def items():
     """Display Food Item data"""
 
-    conn = get_db_connection()
-    db = conn.cursor()
+    user_id = session["user_id"]
+    user = users_collection.find_one({"_id": ObjectId(user_id)}, {"_id": 0, "hash": 0})
+
+    business_id = session["business_id"]
+
+    query = request.args.get('query', '').lower()
+    
+    # Search the items collection based on the query
+    if query:
+        items = list(items_collection.find({
+            "$or": [
+                {"name": {"$regex": query, "$options": "i"}},
+                {"description": {"$regex": query, "$options": "i"}}
+            ]
+        }))
+    else:
+        items = list(items_collection.find())
+    
+    return render_template("items.html", user=user, items=items, business=business_id)
+
+
+@app.route("/add-item", methods=["POST"])
+@login_required
+def add_item():
+    """Add Food Item"""
 
     user_id = session["user_id"]
-    user = db.execute("SELECT * FROM users WHERE id = ?;", (user_id,)).fetchone()
+    user = users_collection.find_one({"_id": ObjectId(user_id)}, {"_id": 0, "hash": 0})
     
-    # Fetch Image IDs
-    # images_data = db.execute("SELECT id, classification, accuracy FROM images WHERE user_id = ?", (user_id,)).fetchall()
-    # print(images)
+    if session["business_id"] is None:
+        return redirect('/business-join')
+
+    business_id = session["business_id"]
+    print(business_id)
+
+    if request.method == "POST":
+
+        item_name = request.form.get("item_name")
+        item_type = request.form.get("item_type")
+        quantity = request.form.get("quantity")
+        allergens = request.form.get("allergens").split(",")
+        tags = request.form.get("tags").split(",")
+        price = request.form.get("price")
+        description = request.form.get("description")
+        business_id = request.form.get("business_id")
+        
+        # Ensure quantity and price are numbers
+        quantity = int(quantity)
+        price = float(price) if price else 0.0
+
+        # Insert the item into the items collection
+        items_collection.insert_one({
+            "name": item_name,
+            "item_type": item_type,
+            "quantity": quantity,
+            "allergens": allergens,
+            "tags": tags,
+            "price": price,
+            "description": description,
+            "business_id": business_id
+        })
+
+        flash("Item added successfully!", "success")
+        return redirect('/business-dashboard')
     
-    conn.close()
-
-    return render_template("search.html", user=user)
-
+    flash("Failed to add item!")
+    return redirect('/business-dashboard')
 
 @app.route("/credit")
 @login_required
@@ -265,10 +427,7 @@ def credit():
 
     user_id = session["user_id"]
     user = db.execute("SELECT * FROM users WHERE id = ?;", (user_id,)).fetchone()
-    
-    # Fetch Image IDs
-    # images_data = db.execute("SELECT id, classification, accuracy FROM images WHERE user_id = ?", (user_id,)).fetchall()
-    # print(images)
+
     
     conn.close()
 
@@ -451,9 +610,6 @@ def google_signin():
 
     id_token_received = request.form['id_token']
 
-    conn = get_db_connection()
-    db = conn.cursor()
-
     try:
 
         idinfo = id_token.verify_oauth2_token(id_token_received, requests.Request(), YOUR_CLIENT_ID)
@@ -462,39 +618,42 @@ def google_signin():
         user_name = idinfo['name']
         user_email = idinfo['email']
 
-        email_count = db.execute("SELECT COUNT(email) FROM users WHERE email = ?;", (user_email,)).fetchone()
-        email_count = email_count[0]
+        existing_user = users_collection.find_one({"email": user_email})
 
-        if email_count != 1:
-
-            email = user_email
-            username = user_name
+        if not existing_user:
+            # Create new user
+            email_domain = user_email.split("@")[-1]
+            business = businesses_collection.find_one({"email_domain": email_domain})
+            
             password = generate_password(12)
-            hash = generate_password_hash(password, method='pbkdf2', salt_length=16)
+            hashed_password = generate_password_hash(password, method='pbkdf2:sha256', salt_length=16)
 
-            db.execute("INSERT INTO USERS (email, username, hash, auto_generated) VALUES(?, ?, ?, ?);", (email, username, hash, True))
-            conn.commit()
+            new_user = {
+                "email": user_email,
+                "username": user_name,
+                "hash": hashed_password,
+                "auto_generated": True,
+                "business_id": business["_id"] if business else None
+            }
 
-            rows = db.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchall()
+            insert_result = users_collection.insert_one(new_user)
+            user_id = insert_result.inserted_id  # Get the generated _id
+            session["business_id"] = str(business["_id"]) if business else None
 
-            print("rows - ", rows)
-
-            session["user_id"] = rows[0]["id"]
+            print("New user inserted with ID:", user_id)
 
         else:
+            user_id = existing_user["_id"]  # Retrieve existing user's _id
+            business_id = existing_user["business_id"]
+            session["business_id"] = str(business_id) if business_id else None
 
-            email = user_email
+        # Store user ID in session
+        session["user_id"] = str(user_id)  # Convert ObjectId to string for session storage
 
-            rows = db.execute("SELECT * FROM users WHERE email = ?;", (email,)).fetchall()
-
-            session["user_id"] = rows[0]["id"]
-
-        conn.close()
         return jsonify(success=True)
 
     except ValueError:
         print('Invalid token')
-        conn.close()
         return jsonify(success=False, error='Invalid token')
 
 

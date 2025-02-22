@@ -1,0 +1,26 @@
+.navbar {
+    z-index: 9999;  /* Ensure navbar stays on top */
+}
+
+.card-body {
+    padding: 15px;  /* Add padding inside cards */
+}
+
+.item-info {
+    flex-grow: 1;  /* Allow item info to take up remaining space */
+}
+
+.action-btn {
+    margin-left: 20px;
+}
+
+/* Optional: Add some spacing between the items */
+.card {
+    margin-bottom: 20px;
+}
+
+/* Make the business-list section scrollable */
+#item-list {
+    max-height: 500px; /* Adjust the height as needed */
+    overflow-y: auto;
+}
