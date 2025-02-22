@@ -46,6 +46,7 @@ db = get_mongodb_connection()
 users_collection = db["users"]
 businesses_collection = db["businesses"]
 items_collection = db["items"]
+# distributor_collection = db["distributors"]
 
 def get_db_connection():
     """Create and return a new database connection."""
@@ -75,7 +76,6 @@ def before_request():
     clear_session(app)
 
     return
-
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -126,7 +126,10 @@ def register():
         address = request.form.get('address')
         city = request.form.get('city')
         postal_code = request.form.get('postal-code')
+        organizaion_type = request.form.get('type')
+        food_safety_cert = request.form.get('food-safety')
         new_email = request.form.get("email")
+        email_domain = request.form.get("email_domain")
         new_username = request.form.get("username")
         new_password = request.form.get("password")
         new_confirmation = request.form.get("confirmation")
@@ -179,25 +182,32 @@ def register():
             else:
                 # If no existing user, create new account
 
-                email_domain = new_email.split("@")[-1]
-                business = businesses_collection.find_one({"email_domain": email_domain})
+                new_business = {
+                    "name": name,
+                    "type": organizaion_type,
+                    "address": number+", "+number2+", "+address+", "+city+", "+postal_code,
+                    "food_safety_cert": food_safety_cert,
+                    "affiliate_users": [],
+                    "email_domain": email_domain,
+                    "rating": 75,
+                    "fs_cert": True if food_safety_cert == 'yes' else False,
+                }
+                result = businesses_collection.insert_one(new_business)
+                business_id = result.inserted_id
 
                 hash_password = generate_password_hash(new_password, method='pbkdf2', salt_length=16)
                 new_user = {
-                    "username": new_username,
+                    "username": name+" Admin",
                     "email": new_email,
                     "hash": hash_password,
                     "auto_generated": False,
-                    "business_id": business["_id"] if business else None
+                    "business_id": business_id,
                 }
-                users_collection.insert_one(new_user)
+                user = users_collection.insert_one(new_user)
+                user_id = user.inserted_id
 
-                # Retrieve user again to get their `_id`
-                user = users_collection.find_one({"email": new_email})
-
-                # Store user ID in session
-                session["user_id"] = str(user["_id"])  # Convert ObjectId to string
-                session["business_id"] = str(business["_id"]) if business else None
+                session["user_id"] = str(user_id)
+                session["business_id"] = str(business_id)
                 flash("Registered!")
                 return redirect("/")
             

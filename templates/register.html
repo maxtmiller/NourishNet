@@ -12,6 +12,9 @@
         <br>
         <form action="/register" method="post" id="registrationForm">
             <div class="mb-3">
+                <input class="form-control mx-auto w-fit" id="email" name="email" placeholder="Set Primary Email" type="email">
+            </div>
+            <div class="mb-3">
                 <input class="form-control mx-auto w-fit" id="name" name="name" placeholder="Name" type="text" required autofocus>
             </div>
             <div class="mb-3">
@@ -42,6 +45,9 @@
                     <option value="yes">Yes</option>
                     <option value="no">No</option>
                 </select>
+            </div>
+            <div class="mb-3">
+                <input class="form-control mx-auto w-fit" id="email_domain" name="email_domain" placeholder="Set Email domain (ex. google.com) (Optional)" type="email">
             </div>
             <div class="mb-3">
                 <input autocomplete="off" class="form-control mx-auto w-fit" id="username" name="username" placeholder="Set Username" type="text" required>
