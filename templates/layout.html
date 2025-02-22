@@ -18,6 +18,13 @@
         <link href="/static/styling/credit.css" rel="stylesheet">
         <link href="/static/styling/items.css" rel="stylesheet">
         <link href="/static/styling/business.css" rel="stylesheet">
+        <style>
+            body {
+                background: url("{{ url_for('static', filename='images/background.png') }}") no-repeat center center fixed;
+                background-size: cover;
+            }
+        </style>
+
         <title>NourishNet: {% block title %}{% endblock %}</title>
     </head>
     <body>
