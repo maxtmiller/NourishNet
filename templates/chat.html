@@ -1,0 +1,55 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Chat: {{ user2_name }}
+{% endblock %}
+
+{% block main %}
+    <h2>Chat with User</h2>
+
+    <div id="chat-container">
+        {% for msg in messages %}
+            <div class="message">
+                <strong>{{ msg.sender }}:</strong>
+                <p>{{ msg.message }}</p>
+                <small>{{ msg.timestamp }}</small>
+            </div>
+        {% endfor %}
+    </div>
+
+    <form id="messageForm" action="/send-message/{{ user2_id }}" method="POST">
+        <input type="text" id="messageInput" name="message" placeholder="Type a message..." required>
+        <button type="button" onclick="sendMessage()">Send</button>
+    </form>
+    <script>
+        function sendMessage() {
+            const message = document.getElementById("messageInput").value;
+            if (message.trim() !== "") {
+                document.getElementById("messageForm").submit();
+            }
+        }
+    </script>
+    <!-- <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
+    <script>
+        const socket = io.connect("http://localhost:5000");
+    
+        socket.on('receive_message', function(data) {
+            const messageContainer = document.getElementById("chat-container");
+            const newMessage = document.createElement("div");
+            newMessage.classList.add("message");
+            newMessage.innerHTML = `<strong>${data.sender}:</strong> <p>${data.message}</p><small>${data.timestamp}</small>`;
+            messageContainer.appendChild(newMessage);
+        });
+    
+        function sendMessage() {
+            const message = document.getElementById("messageInput").value;
+            if (message.trim() !== "") {
+                socket.emit('send_message', {
+                    user1_id: "{{ session['user_id'] }}",
+                    user2_id: "{{ user2_id }}",
+                    message: message
+                });
+            }
+        }
+    </script> -->
+{% endblock %}

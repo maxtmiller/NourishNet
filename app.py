@@ -3,9 +3,9 @@ import json
 import base64
 from io import BytesIO
 import io
-from PIL import Image
 
-import sqlite3
+from flask_socketio import SocketIO, emit
+
 from flask import Flask, flash, redirect, render_template, session, request, jsonify, send_file
 from flask_session import Session
 
@@ -586,6 +586,56 @@ def request_item():
 
     flash(f"Request for {quantity} {item['name']}s submitted successfully!")
     return redirect('/items')
+
+
+@app.route("/chat/<user2_id>")
+def chat(user2_id):
+    user1_id = session.get("user_id")  # Get current user ID from session
+    if not user1_id:
+        return redirect(url_for("login"))
+
+    # Find or create the chat room
+    chat = mongo.db.chats.find_one({
+        "users": {"$all": [ObjectId(user1_id), ObjectId(user2_id)]}
+    })
+
+    if not chat:
+        chat = {
+            "users": [ObjectId(user1_id), ObjectId(user2_id)],
+            "messages": []
+        }
+        mongo.db.chats.insert_one(chat)
+
+    # Get all messages in the chat
+    messages = chat["messages"]
+
+    return render_template("chat.html", messages=messages, user2_id=user2_id)
+
+
+@app.route("/send-message/<user2_id>", methods=["POST"])
+def send_message(user2_id):
+    user1_id = session.get("user_id")
+    message = request.form.get("message")
+
+    if not message:
+        return redirect(url_for("chat", user2_id=user2_id))
+
+    # Find the chat room
+    chat = mongo.db.chats.find_one({
+        "users": {"$all": [ObjectId(user1_id), ObjectId(user2_id)]}
+    })
+
+    # Add the new message to the chat
+    if chat:
+        mongo.db.chats.update_one(
+            {"_id": chat["_id"]},
+            {"$push": {"messages": {"sender": ObjectId(user1_id), "message": message, "timestamp": datetime.now()}}}
+        )
+
+    return redirect(url_for("chat", user2_id=user2_id))
+
+
+
 
 
 @app.route("/credit")

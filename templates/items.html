@@ -48,7 +48,7 @@
                                         <input type="number" class="quantity-input form-control form-control-sm text-center" value="1" min="1" readonly id="quantity-{{ item._id }}" style="width: 50px;">
                                         <button class="btn" type="button" onclick="updateQuantity(event, '{{ item._id }}', 'increase', '{{ item.quantity }}')" style="padding: 5px 15px !important">+</button>
                                     </div>
-                                    <button class="btn btn-primary request-btn" onclick="requestItems('{{ item._id }}')">Request 1 Item</button>
+                                    <button id="request-{{ item._id }}" class="btn btn-primary request-btn" onclick="requestItems('{{ item._id }}')">Request 1 Item</button>
                                 </div>
                             </div>
                         </div>
@@ -85,7 +85,7 @@
 
         function updateRequestText(itemId) {
             const quantity = document.getElementById('quantity-' + itemId).value;
-            const requestBtn = document.querySelector('.request-btn');
+            const requestBtn = document.getElementById('request-' + itemId);
 
             console.log(quantity, itemId);
 
