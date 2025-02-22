@@ -4,6 +4,7 @@ import string
 import re
 import json
 import cohere
+import requests
 
 from functools import wraps
 from flask import redirect, session, request, current_app
@@ -94,3 +95,25 @@ def generate_password(length):
 def valid_email(email):
     emailRegex = r"^[^\s@]+@[^\s@]+\.[^\s@]+$"
     return re.match(emailRegex, email) is not None
+
+
+def get_distance(origin, destination):
+
+    with open('./static/cred.json', 'r') as file:
+        api_key = json.load(file)['mapsAPI']
+
+    base_url = "https://maps.googleapis.com/maps/api/distancematrix/json"
+    params = {
+        "origins": origin,
+        "destinations": destination,
+        "key": api_key
+    }
+
+    response = requests.get(base_url, params=params)
+    data = response.json()
+
+    if data["status"] == "OK":
+        distance = data["rows"][0]["elements"][0]["distance"]["text"]
+        return distance
+    else:
+        return "Error: Unable to fetch distance"

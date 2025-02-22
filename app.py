@@ -10,7 +10,7 @@ from flask import Flask, flash, redirect, render_template, session, request, jso
 from flask_session import Session
 
 from werkzeug.security import check_password_hash, generate_password_hash
-from helpers import login_required, before_first_request, check_for_sql, clear_session, generate_password, valid_email
+from helpers import login_required, before_first_request, check_for_sql, clear_session, generate_password, valid_email, get_distance
 
 from google.oauth2 import id_token
 from google.auth.transport import requests
@@ -321,7 +321,6 @@ def business_dashboard():
 
     business = businesses_collection.find_one({"_id": ObjectId(session["business_id"])})
 
-    # Fetch name and email for each applicant from the users collection
     applications = []
     
     for applicant_id in business.get('applicants', []):
@@ -384,11 +383,10 @@ def items():
     user_id = session["user_id"]
     user = users_collection.find_one({"_id": ObjectId(user_id)}, {"_id": 0, "hash": 0})
 
-    business_id = session["business_id"]
+    cur_business_id = session["business_id"]
 
     query = request.args.get('query', '').lower()
     
-    # Search the items collection based on the query
     if query:
         items = list(items_collection.find({
             "$or": [
@@ -398,6 +396,26 @@ def items():
         }))
     else:
         items = list(items_collection.find())
+
+    for item in items:
+        business_id = item.get("business_id")
+        if business_id:
+            business = businesses_collection.find_one({"_id": business_id})
+            if business:
+                address = business.get("address", "No address found")
+                cur_business = businesses_collection.find_one({"_id": ObjectId(cur_business_id)})
+                cur_address = cur_business.get("address", "No address found")
+                if address == "No address found" or cur_address == "No address found":
+                    print(f"Item: {item['name']} | Business: {business.get('name', 'Unknown')} | Address not found")
+                    item["distance"] = None
+                else:
+                    distance = get_distance(cur_address, address)
+                    item["distance"] = distance
+            else:
+                print(f"Item: {item['name']} | Business not found")
+                item["distance"] = None
+        else:
+            item["distance"] = None
     
     return render_template("items.html", user=user, items=items, business=business_id)
 
@@ -425,13 +443,10 @@ def add_item():
         tags = request.form.get("tags").split(",")
         price = request.form.get("price")
         description = request.form.get("description")
-        business_id = request.form.get("business_id")
         
-        # Ensure quantity and price are numbers
         quantity = int(quantity)
         price = float(price) if price else 0.0
 
-        # Insert the item into the items collection
         items_collection.insert_one({
             "name": item_name,
             "item_type": item_type,
@@ -440,7 +455,7 @@ def add_item():
             "tags": tags,
             "price": price,
             "description": description,
-            "business_id": business_id
+            "business_id": ObjectId(business_id)
         })
 
         flash("Item added successfully!", "success")
@@ -448,6 +463,7 @@ def add_item():
     
     flash("Failed to add item!")
     return redirect('/business-dashboard')
+
 
 @app.route("/credit")
 @login_required

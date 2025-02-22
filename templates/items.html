@@ -34,6 +34,11 @@
                                             <span class="badge bg-info">{{ tag }}</span>
                                         {% endfor %}
                                     </p>
+                                    {% if item.distance is not none %}
+                                        <p><strong>Distance:</strong> {{ item.distance }}</p>
+                                    {% else %}
+                                        <p><strong>Distance:</strong> Not available</p>
+                                    {% endif %}
                                 </div>
                                 <div class="action-btn">
                                     <button class="btn btn-primary">Take Action</button>
