@@ -17,15 +17,15 @@
         <link href="/static/styling/main.css" rel="stylesheet">
         <link href="/static/styling/credit.css" rel="stylesheet">
         <link href="/static/styling/items.css" rel="stylesheet">
-        <link href="/static/styling/business.css" rel="stylesheet">
+        <link href="/static/styling/business.css" rel="stylesheet"
+
+        <title>NourishNet: {% block title %}{% endblock %}</title>
         <style>
             body {
                 background: url("{{ url_for('static', filename='images/background.png') }}") no-repeat center center fixed;
                 background-size: cover;
             }
         </style>
-
-        <title>NourishNet: {% block title %}{% endblock %}</title>
     </head>
     <body>
         <nav class="bg-light border navbar navbar-expand-md navbar-light navPos" style="position:fixed;width:100%;">
