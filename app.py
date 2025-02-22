@@ -157,6 +157,14 @@ def register():
         # Ensure password is between 4 and 15 characters
         elif len(new_password) < 4 or len(new_password) > 15:
             error = "Password must be between 4 and 15 characters long!"
+
+            # Ensure Business Registration Number is valid
+        elif not number.isdigit() or len(number) < 1:
+            error = "Invalid Business Registration Number!"
+
+        # Ensure Postal Code is valid
+        elif not postal_code.isdigit() or len(postal_code) != 6:
+            error = "Postal Code should be 6 digits!"
         
         else:
             # Check if the username or email already exists in the database
