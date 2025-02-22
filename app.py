@@ -121,8 +121,8 @@ def register():
 
     if request.method == "POST":
         name = request.form.get('name')
-        number = request.form.get('number')
-        number2 = request.form.get('number2')
+        reg_id = request.form.get('reg_id')
+        tax_id = request.form.get('tax_id')
         address = request.form.get('address')
         city = request.form.get('city')
         postal_code = request.form.get('postal-code')
@@ -161,13 +161,17 @@ def register():
         elif len(new_password) < 4 or len(new_password) > 15:
             error = "Password must be between 4 and 15 characters long!"
 
-            # Ensure Business Registration Number is valid
-        elif not number.isdigit() or len(number) < 1:
+        # Ensure Business Registration Number is valid
+        elif not reg_id.isdigit() or len(reg_id) < 1:
             error = "Invalid Business Registration Number!"
+        
+        # Ensure Tax Identification Number is valid
+        elif not tax_id.isdigit() or len(tax_id) < 1:
+            error = "Invalid Tax Identification Number!"
 
         # Ensure Postal Code is valid
-        elif not postal_code.isdigit() or len(postal_code) != 6:
-            error = "Postal Code should be 6 digits!"
+        elif len(postal_code) != 6:
+            error = "Postal Code should be 6 characters!"
         
         else:
             # Check if the username or email already exists in the database
@@ -180,16 +184,16 @@ def register():
                     error = "An account already exists with this email!"
                 return render_template("register.html", error=error)
             else:
-                # If no existing user, create new account
 
                 new_business = {
                     "name": name,
                     "type": organizaion_type,
-                    "address": number+", "+number2+", "+address+", "+city+", "+postal_code,
-                    "food_safety_cert": food_safety_cert,
+                    "address": address+", "+city+", "+postal_code,
                     "affiliate_users": [],
                     "email_domain": email_domain,
                     "rating": 75,
+                    "reg_id": reg_id,
+                    "tax_id": tax_id,
                     "fs_cert": True if food_safety_cert == 'yes' else False,
                 }
                 result = businesses_collection.insert_one(new_business)
@@ -206,9 +210,14 @@ def register():
                 user = users_collection.insert_one(new_user)
                 user_id = user.inserted_id
 
+                businesses_collection.update_one(
+                    {"_id": business_id},
+                    {"$push": {"affiliated_users": user_id}}
+                )
+
                 session["user_id"] = str(user_id)
                 session["business_id"] = str(business_id)
-                flash("Registered!")
+                flash(f"Registered {name}!")
                 return redirect("/")
             
         return render_template("register.html", error=error)
