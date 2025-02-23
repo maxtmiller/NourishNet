@@ -5,20 +5,39 @@
 {% endblock %} 
 
 {% block main %}
+    <head>
+    <style>
+        section {
+        margin-bottom: 30px; /* Space between sections */
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+        text-align: left; /* Align text to the left */
+    }
+    
+    section h1, section h2 {
+        color: #c21818; /* Set title color */
+    }
+    </style>
+    </head>
     <div id="aboutBody">
         <div class="container">
+            <section>
             <h1 id="aboutH1">About Our Platform</h1>
             <p>
                 Our platform is designed to bridge the gap between businesses and charitable organizations, 
                 making food donations seamless and rewarding. By leveraging modern technology, we ensure that surplus food reaches those in need efficiently.
             </p>
-
+            </section>
+            <section>
             <h2>Our Mission</h2>
             <p>
                 We believe in reducing food waste while helping communities. Our goal is to create a sustainable ecosystem where businesses 
                 can donate excess food, claim tax benefits, and support local initiatives.
             </p>
+            </section>
 
+            <section>
             <h2>Key Features</h2>
             <ol>
                 <li><strong>Seamless Donation Process:</strong> Easily list and manage food donations with just a few clicks.</li>
@@ -27,17 +46,22 @@
                 <li><strong>Secure Transactions:</strong> Ensure that all data and interactions are encrypted and protected.</li>
                 <li><strong>Community Engagement:</strong> Connect with food banks, shelters, and organizations in your area.</li>
             </ol>
+            </section>
 
+            <section>
             <h2>Why Choose Us?</h2>
             <p>
                 Unlike traditional donation processes, our app simplifies logistics, enhances transparency, and maximizes the benefits for both businesses and charities. 
                 Whether you’re a restaurant, grocery store, or food supplier, we make giving back easy and impactful.
             </p>
+            </section>
 
+            <section>
             <h2>Get Involved</h2>
             <p>
                 Join our mission to reduce food waste and fight hunger. Sign up today to start making a difference!
             </p>
+            </section>
         </div>
     </div>
 {% endblock %}
