@@ -14,8 +14,6 @@
     // Initialize and add the map
     function initMap() {
       // Center map at a central location
-      let marker;
-      let infowindow;
       if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(function(position) {
                 const userLat = position.coords.latitude;
@@ -35,20 +33,22 @@
                 });
 
                 {% for business in businesses %}
-                    // Add markers for businesses
-                    marker = new google.maps.Marker({
-                        position: { lat: {{ business.lat }}, lng: {{ business.lng }} },
-                        map: map,
-                        title: '{{ business.name }}',
-                    });
+                  (function() {
+                      // Use `let` inside an immediately invoked function expression (IIFE)
+                      let businessMarker = new google.maps.Marker({
+                          position: { lat: {{ business.lat }} , lng: {{ business.lng }} },
+                          map: map,
+                          title: '{{ business.name }}',
+                      });
 
-                    infowindow = new google.maps.InfoWindow({
-                        content: '<strong>{{ business.name }}</strong><br>{{ business.address }}'
-                    });
+                      let businessInfoWindow = new google.maps.InfoWindow({
+                          content: '<strong>{{ business.name }}</strong><br>{{ business.address }}'
+                      });
 
-                    marker.addListener('click', () => {
-                        infowindow.open(map, marker);
-                    });
+                      businessMarker.addListener('click', () => {
+                          businessInfoWindow.open(map, businessMarker);
+                      });
+                  })();
                 {% endfor %}
           });
       } else {
