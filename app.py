@@ -1,24 +1,19 @@
 import requests
 import json
-import base64
-from io import BytesIO
-import io
 
+from pymongo.mongo_client import MongoClient
 from datetime import datetime
+from bson import ObjectId
 
-from flask import Flask, flash, redirect, render_template, session, request, jsonify, send_file
+from flask import Flask, flash, redirect, render_template, session, request, jsonify
 from flask_session import Session
 
 from werkzeug.security import check_password_hash, generate_password_hash
-from helpers import login_required, before_first_request, check_for_sql, clear_session, generate_password, valid_email, get_distance, get_coordinates
+from helpers import login_required, before_first_request, clear_session, generate_password, valid_email, get_distance, get_coordinates
 
 from google.oauth2 import id_token
 from google.auth.transport import requests
 
-from pymongo.mongo_client import MongoClient
-from pymongo.server_api import ServerApi
-
-from bson import ObjectId
 
 app = Flask(__name__)
 
@@ -62,8 +57,6 @@ def after_request(response):
 @before_first_request
 def before_request():
     """Clear Session"""
-
-    check_for_sql(app)
 
     # Calls function to redirect to login page only on app start
     clear_session(app)
@@ -330,7 +323,6 @@ def receiver_dashboard():
             "item_name": order.get('item_name'),
             "bus_name": order.get('bus_name'),
             "quantity": order.get('quantity'),
-            # "distance": get_distance(business.get('address'), provider.get('address')),
             "status": order.get('status'),
             "id": order.get('request_id')
         })
@@ -675,7 +667,6 @@ def business_map():
     else:
         businesses = businesses_collection.find({"type": "provider"})
 
-    # Create an array with business ID and address
     business_info = []
     for business in businesses:
         coordinates = get_coordinates(business.get("address", "No address provided"))

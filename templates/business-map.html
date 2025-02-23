@@ -6,14 +6,19 @@
 
 {% block main %}
   <h1 id="chat-title" style="margin-bottom: 2vh;">{% if type == 'provider' %} Receiver Locations {% else %} Provider Locations {% endif %}</h1>
+  <div class="centered" style="margin-top: 35vh;">
+    <span class="loader"></span>
+  </div>
   <div id="map"></div>
-
   <script>
     let map;
 
     // Initialize and add the map
     function initMap() {
       // Center map at a central location
+      const loader = document.querySelector('.centered');
+      const mapElement = document.getElementById("map");
+
       if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(function(position) {
                 const userLat = position.coords.latitude;
@@ -24,6 +29,11 @@
                     center: { lat: userLat, lng: userLng },
                     zoom: 13,
                 });
+
+                // Hide loader as soon as the map is populated
+                if (mapElement && mapElement.innerHTML.trim() !== '') {
+                  loader.style.display = 'none';
+                }
 
                 // Optional: Add a marker at the user's location
                 const userMarker = new google.maps.Marker({

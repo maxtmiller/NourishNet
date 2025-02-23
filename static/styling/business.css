@@ -93,35 +93,6 @@ h2 {
     background-color: #f9f9f9;
 }
 
-.messages {
-    margin-bottom: 20px;
-}
-
-.message {
-    margin-bottom: 15px;
-}
-
-.message strong {
-    color: #333;
-}
-
-.message.received {
-    background-color: #ffebee;
-    padding: 10px;
-    border-radius: 5px;
-}
-
-.message.sent {
-    background-color: #ffebee;
-    padding: 10px;
-    border-radius: 5px;
-}
-
-.message p {
-    margin: 0;
-    font-size: 1rem;
-}
-
 .progress-container {
     width: 80%;
     background-color: rgba(255, 255, 255, 0.2);

@@ -1,6 +1,5 @@
 {
     "clientID":"696657977726-94bu7tgavtqb0jv07rh7ahggg20o0pch.apps.googleusercontent.com",
-    "cohereAPI":"x7KrbipVnOnCq9T1S3VTlJWsSsEG607CKG2sXw8U",
     "mongoURI":"mongodb+srv://mtmlr101:Qop7pytojuhzwORn@cluster0.axsjrof.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0",
     "mapsAPI": "AIzaSyDP4b5sRQo06y_KJ0iGb8Nj6nD6jKOrgcA",
     "openCageAPI": "ab004460f7f44168841fd61496b04868"
