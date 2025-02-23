@@ -2,9 +2,6 @@ flask
 flask_session
 requests
 gunicorn
-cohere
-pillow
-numpy
 google-auth
 pymongo
 opencage
