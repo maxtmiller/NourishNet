@@ -1,4 +1,9 @@
 flask
+flask_session
 requests
 gunicorn
-flask_session
+cohere
+pillow
+numpy
+google-auth
+pymongo
