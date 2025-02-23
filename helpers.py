@@ -6,6 +6,9 @@ import json
 import cohere
 import requests
 
+from opencage.geocoder import OpenCageGeocode
+from pprint import pprint
+
 from functools import wraps
 from flask import redirect, session, request, current_app
 
@@ -117,3 +120,18 @@ def get_distance(origin, destination):
         return distance
     else:
         return "Error: Unable to fetch distance"
+
+
+def get_coordinates(address):
+
+    with open('./static/cred.json', 'r') as file:
+        api_key = json.load(file)['openCageAPI']
+
+    geocoder = OpenCageGeocode(api_key)
+
+    results = geocoder.geocode(address)
+
+    if results and len(results):
+        return results[0]['geometry']
+    else:
+        return None

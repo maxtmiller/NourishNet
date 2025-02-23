@@ -1,0 +1,68 @@
+{% extends "layout.html" %}
+
+{% block title %}
+  Business Map
+{% endblock %}
+
+{% block main %}
+  <h1 id="chat-title" style="margin-bottom: 2vh;">{% if type == 'provider' %} Receiver Locations {% else %} Provider Locations {% endif %}</h1>
+  <div id="map"></div>
+
+  <script>
+    let map;
+
+    // Initialize and add the map
+    function initMap() {
+      // Center map at a central location
+      let marker;
+      let infowindow;
+      if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(function(position) {
+                const userLat = position.coords.latitude;
+                const userLng = position.coords.longitude;
+
+                // Create a map centered at the user's location
+                map = new google.maps.Map(document.getElementById("map"), {
+                    center: { lat: userLat, lng: userLng },
+                    zoom: 13,
+                });
+
+                // Optional: Add a marker at the user's location
+                const userMarker = new google.maps.Marker({
+                    position: { lat: userLat, lng: userLng },
+                    map: map,
+                    title: "You are here"
+                });
+
+                {% for business in businesses %}
+                    // Add markers for businesses
+                    marker = new google.maps.Marker({
+                        position: { lat: {{ business.lat }}, lng: {{ business.lng }} },
+                        map: map,
+                        title: '{{ business.name }}',
+                    });
+
+                    infowindow = new google.maps.InfoWindow({
+                        content: '<strong>{{ business.name }}</strong><br>{{ business.address }}'
+                    });
+
+                    marker.addListener('click', () => {
+                        infowindow.open(map, marker);
+                    });
+                {% endfor %}
+          });
+      } else {
+        // Handle browser does not support geolocation
+        alert("Geolocation is not supported by this browser.");
+      }
+    }
+
+    window.addEventListener("load", () => {
+      if (typeof google !== "undefined" && google.maps) {
+        initMap();
+      } else {
+        console.error("Google Maps API failed to load.");
+      }
+    });
+  </script>
+{% endblock %}

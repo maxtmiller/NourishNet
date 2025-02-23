@@ -12,14 +12,21 @@
         </header>
         <div class="upload-container">
             <button class="main-btn" onclick="items()"> Search Database </button>
-            <button class="main-btn" onclick="dashboard()"> View Dashboard </button>
+            {% if type == 'provider' %}
+                <button class="main-btn" onclick="provider_dashboard()"> View Dashboard </button>
+            {% else %}
+                <button class="main-btn" onclick="receiver_dashboard()"> View Dashboard </button>
+            {% endif %}
         </div>
         <script>
             function items() {
                 window.location.href = "/items";
             }
-            function dashboard() {
+            function provider_dashboard() {
                 window.location.href = "/provider-dashboard";
+            }
+            function receiver_dashboard() {
+                window.location.href = "/receiver-dashboard";
             }
         </script>
         <br><br>

@@ -6,13 +6,11 @@ import io
 
 from datetime import datetime
 
-from flask_socketio import SocketIO, emit
-
 from flask import Flask, flash, redirect, render_template, session, request, jsonify, send_file
 from flask_session import Session
 
 from werkzeug.security import check_password_hash, generate_password_hash
-from helpers import login_required, before_first_request, check_for_sql, clear_session, generate_password, valid_email, get_distance
+from helpers import login_required, before_first_request, check_for_sql, clear_session, generate_password, valid_email, get_distance, get_coordinates
 
 from google.oauth2 import id_token
 from google.auth.transport import requests
@@ -28,8 +26,6 @@ app = Flask(__name__)
 app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_TYPE"] = "filesystem"
 Session(app)
-
-socketio = SocketIO(app)
 
 
 def get_mongodb_connection():
@@ -663,30 +659,39 @@ def request_item():
     return redirect('/items')
 
 
-
-@app.route("/provider-map")
+@app.route("/business-map")
 @login_required
-def provider_map():
-    """Provider Map"""
+def business_map():
+    """Receiver Map"""
 
     user_id = session["user_id"]
     user = users_collection.find_one({"_id": ObjectId(user_id)}, {"_id": 0, "hash": 0})
 
     cur_business_id = session["business_id"]
+    cur_type = businesses_collection.find_one({"_id": ObjectId(cur_business_id)})["type"]
 
-    businesses = businesses_collection.find({"type": "provider"})
+    if cur_type != 'receiver':
+        businesses = businesses_collection.find({"type": "receiver"})
+    else:
+        businesses = businesses_collection.find({"type": "provider"})
 
     # Create an array with business ID and address
     business_info = []
     for business in businesses:
+        coordinates = get_coordinates(business.get("address", "No address provided"))
+        if not coordinates:
+            continue
         business_info.append({
-            "business_id": str(business["_id"]),  # Convert ObjectId to string for easy readability
-            "address": business.get("address", "No address provided")  # Default value if no address exists
-    })
+            "business_id": str(business["_id"]),
+            "name": business.get("name", "No name provided"),
+            "address": business.get("address", "No address provided"),
+            "lat": coordinates['lat'],
+            "lng": coordinates['lng']
+        })
         
     print(business_info)
 
-    return render_template("provider-map.html", user=user, business=business)
+    return render_template("business-map.html", user=user, businesses=business_info, type=cur_type)
 
 
 @app.route("/chat/<request_id>")

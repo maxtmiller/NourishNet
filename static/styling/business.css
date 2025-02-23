@@ -54,7 +54,7 @@ h2 {
 }
 
 .btn {
-    background-color: #c21818;
+    background-color: #0575e6;
     color: white;
     border: none;
     padding: 10px 20px;
@@ -120,4 +120,37 @@ h2 {
 .message p {
     margin: 0;
     font-size: 1rem;
+}
+
+.progress-container {
+    width: 80%;
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 15px;
+    border: 1px solid rgba(69, 69, 69, 0.2);
+    margin: auto;
+    overflow: hidden;
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+    height: 30px;
+    position: relative;
+    z-index: 10;
+}
+
+.progress-bar {
+    width: 0%;
+    height: 100%;
+    background: linear-gradient(90deg, #00f260, #0575e6);
+    border-radius: 15px;
+    transition: width 2.5s ease-in-out;
+    box-shadow: 0 0 10px rgba(0, 242, 96, 0.8);
+    animation: pulse 1.5s infinite alternate;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 10px rgba(0, 242, 96, 0.8); }
+    100% { box-shadow: 0 0 20px rgba(5, 117, 230, 0.8); }
+}
+
+#map {
+    height: 700px;
+    width: 100%;
 }

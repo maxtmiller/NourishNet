@@ -11,6 +11,42 @@
             <h2>Welcome to your food bank dashboard. Select an option below to manage your operations.</h2>
         </header> 
 
+        <!-- Manage Food Requests Section -->
+        <section class="section manage-food-requests">
+            <h3>Manage Food Deliveries</h3>
+            <p>Review and manage requests for food items from food banks.</p>
+            {% if orders %}
+                <div class="food-requests">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Item Name</th>
+                                <th>Delivery Business Name</th>
+                                <th>Quantity</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for order in orders %}
+                                <tr>
+                                    <td>{{ order.item_name }}</td>
+                                    <td>{{ order.bus_name }}</td>
+                                    <td>{{ order.quantity }}</td>
+                                    <td>{{ order.status }}</td>
+                                    <td>
+                                        <a href="/chat/{{ order.id }}" class="btn">View Chat</a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p>No food requests found.</p>
+            {% endif %}
+        </section>
+
         <!-- Manage Applications Section -->
         <section class="section manage-applications">
             <h3>Manage Business Applications</h3>
@@ -73,42 +109,6 @@
                     </tbody>
                 </table>
             </div>
-        </section>
-
-        <!-- Manage Food Requests Section -->
-        <section class="section manage-food-requests">
-            <h3>Manage Food Deliveries</h3>
-            <p>Review and manage requests for food items from food banks.</p>
-            {% if orders %}
-                <div class="food-requests">
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>Item Name</th>
-                                <th>Delivery Business Name</th>
-                                <th>Quantity</th>
-                                <th>Status</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for order in orders %}
-                                <tr>
-                                    <td>{{ order.item_name }}</td>
-                                    <td>{{ order.bus_name }}</td>
-                                    <td>{{ order.quantity }}</td>
-                                    <td>{{ order.status }}</td>
-                                    <td>
-                                        <a href="/chat/{{ order.id }}" class="btn">View Chat</a>
-                                    </td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            {% else %}
-                <p>No food requests found.</p>
-            {% endif %}
         </section>
     </div>
 {% endblock %}
