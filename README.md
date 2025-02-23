@@ -46,4 +46,4 @@ Ensure you have Python installed (preferably Python 3.11 or later). You also nee
 4. Run the Flask application:
    ```bash
    flask run
-5. Open the application in your browser using the terminal local host link
+5. Open the application in your browser using the terminal local host link. You're all set!
