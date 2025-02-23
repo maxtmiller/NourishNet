@@ -20,9 +20,7 @@ We believe in reducing food waste while helping communities. Our goal is to crea
 - **APIs & Libraries:**
   - Flask-Session (for session management)
   - Requests (for making HTTP requests)
-  - Pillow (for image processing)
   - Cohere (AI/ML integrations)
-  - NumPy (for data processing)
   - Google Auth (for authentication)
   - OpenCage (for geolocation services)
 
