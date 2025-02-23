@@ -40,7 +40,7 @@
                         <li class="nav-item {% if request.path.startswith('/business-join') or request.path.startswith('/provider-dashboard') %}active{% endif %}" style="margin-right: 200px;">
                             <a id="p1" class="nav-link" href="{% if business is none %}/business-join{% else %}{% if type == 'receiver' %} /receiver-dashboard {% else %} /provider-dashboard {% endif %}{% endif %}"> {% if business is not none %} Dashboard {% else %} Join Organization {% endif %} </a>
                         </li>
-                        <!-- <li class="nav-item {% if request.path == '/' %}active{% endif %}" style="margin-right: 200px;"><a id="p1" class="nav-link" href="/#">Home</a></li> -->
+                        <li class="nav-item {% if request.path == '/provider-map' %}active{% endif %}" style="margin-right: 200px;"><a id="p1" class="nav-link" href="/provider-map">Map</a></li>
                         {% if type == 'receiver' %}
                             <li class="nav-item {% if request.path == '/items' %}active{% endif %}" style="margin-right: 200px;">
                                 <a id="p1" class="nav-link" href="/items">Item Database</a>

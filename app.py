@@ -327,26 +327,19 @@ def receiver_dashboard():
     business = businesses_collection.find_one({"_id": ObjectId(session["business_id"])})
     cur_type = business["type"] if business else None
 
-    requests = []
+    orders = []
 
-    for request in business.get('requests', []):
-        item = items_collection.find_one({"_id": request.get('item_id')})
-        if item:
-            bus_id = request.get('bus_id')
-            if bus_id:
-                provider = businesses_collection.find_one({"_id": bus_id})
-                if provider:
-                    requests.append({
-                        "item_name": item.get('name'),
-                        "provider_name": provider.get('name'),
-                        "quantity": request.get('quantity'),
-                        "provider_address": provider.get('address'),
-                        "distance": get_distance(business.get('address'), provider.get('address')),
-                        "status": request.get('status'),
-                        "id": request.get('request_id')
-                    })
+    for order in business.get('orders', []):
+        orders.append({
+            "item_name": order.get('item_name'),
+            "bus_name": order.get('bus_name'),
+            "quantity": order.get('quantity'),
+            # "distance": get_distance(business.get('address'), provider.get('address')),
+            "status": order.get('status'),
+            "id": order.get('request_id')
+        })
 
-    return render_template("receiver-dashboard.html", user=user, business=business, requests=requests, type=cur_type)
+    return render_template("receiver-dashboard.html", user=user, business=business, orders=orders, type=cur_type)
 
 
 @app.route("/provider-dashboard")
@@ -465,14 +458,21 @@ def manage_requests(decision, request_id):
     request = request.get('requests', [])[0]
     item_id = request.get('item_id')
     quantity = request.get('quantity')
+    bus_id = request.get('bus_id')
 
     if decision == 'accept':
+        item_name = items_collection.find_one({"_id": item_id}).get('name', 'Item')
+        bus_name = businesses_collection.find_one({"_id": ObjectId(session["business_id"])}).get('name', 'Business')
         businesses_collection.update_one(
             {"_id": ObjectId(session["business_id"])},
             {"$set": {
                 "requests.$[elem].status": "Accepted"
             }},
             array_filters=[{"elem.request_id": ObjectId(request_id)}]
+        )
+        businesses_collection.update_one(
+            {"_id": bus_id},
+            {"$push": {"orders": {"request_id": ObjectId(request_id), "item_id": item_id, "item_name": item_name, "bus_name": bus_name, "quantity": quantity, "status": "Awaiting Delivery", "timestamp": datetime.now()}}}
         )
         flash("Request accepted successfully!")
     elif decision == 'decline':
@@ -488,9 +488,10 @@ def manage_requests(decision, request_id):
         flash("Request rejected successfully!")
     elif decision == 'confirm':
         item_name = items_collection.find_one({"_id": item_id}).get('name', 'Item')
+        bus_name = businesses_collection.find_one({"_id": ObjectId(session["business_id"])}).get('name', 'Business')
         businesses_collection.update_one(
             {"_id": ObjectId(session["business_id"])},
-            {"$push": {"history": {"request_id": ObjectId(request_id), "item": item_name, "qunatity": quantity, "status": "Delivered", "timestamp": datetime.now()}}}
+            {"$push": {"history": {"request_id": ObjectId(request_id), "item_id": item_id, "quantity": quantity, "status": "Delivered", "timestamp": datetime.now()}}}
         )
         item_cost = items_collection.find_one({"_id": item_id}).get('price', 0)
         businesses_collection.update_one(
@@ -500,6 +501,10 @@ def manage_requests(decision, request_id):
         businesses_collection.update_one(
             {"_id": ObjectId(session["business_id"])},
             {"$pull": {"requests": {"request_id": ObjectId(request_id)}}}
+        )
+        businesses_collection.update_one(
+            {"_id": bus_id},
+            {"$pull": {"orders": {"request_id": ObjectId(request_id)}}}
         )
         flash("Delivery confirmed!")
     else:
@@ -658,6 +663,32 @@ def request_item():
     return redirect('/items')
 
 
+
+@app.route("/provider-map")
+@login_required
+def provider_map():
+    """Provider Map"""
+
+    user_id = session["user_id"]
+    user = users_collection.find_one({"_id": ObjectId(user_id)}, {"_id": 0, "hash": 0})
+
+    cur_business_id = session["business_id"]
+
+    businesses = businesses_collection.find({"type": "provider"})
+
+    # Create an array with business ID and address
+    business_info = []
+    for business in businesses:
+        business_info.append({
+            "business_id": str(business["_id"]),  # Convert ObjectId to string for easy readability
+            "address": business.get("address", "No address provided")  # Default value if no address exists
+    })
+        
+    print(business_info)
+
+    return render_template("provider-map.html", user=user, business=business)
+
+
 @app.route("/chat/<request_id>")
 @login_required
 def chat(request_id):
@@ -671,10 +702,16 @@ def chat(request_id):
     cur_business_id = session["business_id"]
     cur_type = businesses_collection.find_one({"_id": ObjectId(cur_business_id)})["type"]
 
-    request = businesses_collection.find_one(
-        {"_id": ObjectId(cur_business_id)},
-        {"requests": {"$elemMatch": {"request_id": ObjectId(request_id)}}}
-    )
+    if cur_type == 'provider':
+        request = businesses_collection.find_one(
+            {"_id": ObjectId(cur_business_id)},
+            {"requests": {"$elemMatch": {"request_id": ObjectId(request_id)}}}
+        )
+    else:
+        request = businesses_collection.find_one(
+            {"_id": ObjectId(cur_business_id)},
+            {"orders": {"$elemMatch": {"request_id": ObjectId(request_id)}}}
+        )
 
     print(request_id)
     print(request)
@@ -708,36 +745,29 @@ def chat(request_id):
     else:
         print("Chat not found.")
 
-        chats_collection.insert_one({
-            "request_id": ObjectId(request_id),
-            "item_id": request['requests'][0]['item_id'],
-            "quantity": request['requests'][0]['quantity'],
-            "users": [ObjectId(cur_business_id), ObjectId(request['requests'][0]['bus_id'])],
-            "messages": []
-        })
+        if cur_type == 'provider':
+
+            chats_collection.insert_one({
+                "request_id": ObjectId(request_id),
+                "item_id": request['requests'][0]['item_id'],
+                "quantity": request['requests'][0]['quantity'],
+                "users": [ObjectId(cur_business_id), ObjectId(request['requests'][0]['bus_id'])],
+                "messages": []
+            })
+        else:
+            print(request['orders'][0])
+            item = items_collection.find_one({"_id": request['orders'][0]['item_id']})
+            bus_id = item['business_id']
+
+            chats_collection.insert_one({
+                "request_id": ObjectId(request_id),
+                "item_id": request['orders'][0]['item_id'],
+                "quantity": request['orders'][0]['quantity'],
+                "users": [ObjectId(cur_business_id), bus_id],
+                "messages": []
+            })
 
     return redirect("/chat/"+request_id)
-
-    chat = chats_collection.find_one({"request_id": ObjectId(request_id)})
-
-    user_1 = chat.get("users")[0]
-
-    if cur_business_id == user_1:
-        user_2 = chat.get("users")[1]
-
-    else:
-        user_1 = chat.get("users")[1]
-        user_2 = chat.get("users")[0]
-
-    user_1_info = businesses_collection.find_one(
-        {"_id": ObjectId(user_1)}
-    )
-    user_2_info = businesses_collection.find_one(
-        {"_id": ObjectId(user_2)}
-    )
-    print("Line 655: ", user_1, user_2)
-    
-    return render_template("chat.html", user=user, messages=[], request_id=request_id, user_1=user_1_info, user_2=user_2_info)
 
 
 @app.route("/send-message/<request_id>", methods=["POST"])
@@ -753,10 +783,8 @@ def send_message(request_id):
     if not message:
         return redirect("/chat/"+request_id)
 
-    # Find the chat room
     chat = chats_collection.find_one({"request_id": ObjectId(request_id)})
 
-    # Add the new message to the chat
     if chat:
         chats_collection.update_one(
             {"request_id": ObjectId(request_id)},
@@ -764,45 +792,6 @@ def send_message(request_id):
         )
 
     return redirect("/chat/"+request_id)
-
-
-# @socketio.on('send_message')
-# def handle_message(data):
-#     user1_id = data['user1_id']
-#     user2_id = data['user2_id']
-#     message = data['message']
-
-#     chat = chats_collection.find_one({
-#         "users": {"$all": [ObjectId(user1_id), ObjectId(user2_id)]}
-#     })
-
-#     if chat:
-#         chats_collection.update_one(
-#             {"_id": chat["_id"]},
-#             {"$push": {"messages": {"sender": ObjectId(user1_id), "message": message, "timestamp": datetime.now()}}}
-#         )
-#         emit('receive_message', {
-#             'sender': user1_id,
-#             'message': message,
-#             'timestamp': datetime.now()
-#         }, room=chat["_id"])
-
-
-@app.route("/credit")
-@login_required
-def credit():
-    """Display Government Credits & Tax Benefits"""
-
-    conn = get_db_connection()
-    db = conn.cursor()
-
-    user_id = session["user_id"]
-    user = db.execute("SELECT * FROM users WHERE id = ?;", (user_id,)).fetchone()
-
-    
-    conn.close()
-
-    return render_template("credit.html",  user=user)
 
 
 @app.route("/settings", methods=["GET", "POST"] )
@@ -961,13 +950,9 @@ def settings():
 def about():
     """About Page"""
 
-    conn = get_db_connection()
-    db = conn.cursor()
-
     user_id = session["user_id"]
-    user = db.execute("SELECT * FROM users WHERE id = ?;", (user_id,)).fetchone()
+    user = users_collection.find_one({"_id": ObjectId(user_id)}, {"_id": 0, "hash": 0})
 
-    conn.close()
     return render_template("about.html",  user=user)
 
 
