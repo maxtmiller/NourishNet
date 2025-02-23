@@ -11,16 +11,20 @@
             <h2>Select an option below.</h2>
         </header>
         <div class="upload-container">
-            <button class="main-btn" onclick="items()"> Search Database </button>
             {% if type == 'provider' %}
                 <button class="main-btn" onclick="provider_dashboard()"> View Dashboard </button>
+                <button class="main-btn" onclick="maps()"> View Providers </button>
             {% else %}
                 <button class="main-btn" onclick="receiver_dashboard()"> View Dashboard </button>
+                <button class="main-btn" onclick="items()"> Search Database </button>
             {% endif %}
         </div>
         <script>
             function items() {
                 window.location.href = "/items";
+            }
+            function maps() {
+                window.location.href = "/business-map";
             }
             function provider_dashboard() {
                 window.location.href = "/provider-dashboard";
