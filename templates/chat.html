@@ -1,26 +1,28 @@
 {% extends "layout.html" %}
 
 {% block title %}
-    Chat: {{ user2_name }}
+    Chat: {{ user_2.name }}
 {% endblock %}
 
 {% block main %}
-    <h2>Chat with User</h2>
-
+    <h1 id="chat-title" >{{ user_2.name }} {% if user_1.type == 'provider' %} Delivery {% else %} Pickup {% endif %}</h1>
+    <h2 id="chat-subtitle">({{ item_name }})</h2>
     <div id="chat-container">
         {% for msg in messages %}
-            <div class="message">
-                <strong>{{ msg.sender }}:</strong>
-                <p>{{ msg.message }}</p>
-                <small>{{ msg.timestamp }}</small>
+            <div class="message {% if msg.sender == user_1._id %}sent{% else %}received{% endif %}">
+                <div class="message-content">
+                    <p>{{ msg.message }}</p>
+                    <small>{{ msg.timestamp }}</small>
+                </div>
             </div>
         {% endfor %}
     </div>
-
-    <form id="messageForm" action="/send-message/{{ user2_id }}" method="POST">
-        <input type="text" id="messageInput" name="message" placeholder="Type a message..." required>
-        <button type="button" onclick="sendMessage()">Send</button>
-    </form>
+    <div id="message-box">
+        <form id="messageForm" action="/send-message/{{ request_id }}" method="POST">
+            <input type="text" id="messageInput" name="message" placeholder="Type a message..." required>
+            <button type="button" onclick="sendMessage()">➤</button>
+        </form>
+    </div>
     <script>
         function sendMessage() {
             const message = document.getElementById("messageInput").value;
@@ -29,27 +31,4 @@
             }
         }
     </script>
-    <!-- <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
-    <script>
-        const socket = io.connect("http://localhost:5000");
-    
-        socket.on('receive_message', function(data) {
-            const messageContainer = document.getElementById("chat-container");
-            const newMessage = document.createElement("div");
-            newMessage.classList.add("message");
-            newMessage.innerHTML = `<strong>${data.sender}:</strong> <p>${data.message}</p><small>${data.timestamp}</small>`;
-            messageContainer.appendChild(newMessage);
-        });
-    
-        function sendMessage() {
-            const message = document.getElementById("messageInput").value;
-            if (message.trim() !== "") {
-                socket.emit('send_message', {
-                    user1_id: "{{ session['user_id'] }}",
-                    user2_id: "{{ user2_id }}",
-                    message: message
-                });
-            }
-        }
-    </script> -->
 {% endblock %}

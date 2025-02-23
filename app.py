@@ -4,6 +4,8 @@ import base64
 from io import BytesIO
 import io
 
+from datetime import datetime
+
 from flask_socketio import SocketIO, emit
 
 from flask import Flask, flash, redirect, render_template, session, request, jsonify, send_file
@@ -26,6 +28,8 @@ app = Flask(__name__)
 app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_TYPE"] = "filesystem"
 Session(app)
+
+socketio = SocketIO(app)
 
 
 def get_mongodb_connection():
@@ -246,9 +250,10 @@ def home():
 
     if business_id:
         business = businesses_collection.find_one({"_id": ObjectId(business_id)}, {"_id": 0})
-        return render_template("business-home.html", user=user, business=business)
+        cur_type = business["type"] if business else None
+        return render_template("business-home.html", user=user, business=business, type=cur_type)
 
-    return render_template("business-home.html", user=user, business=None)
+    return render_template("business-home.html", user=user, business=None, type=None)
 
 
 @app.route("/business-join", methods=["GET"])
@@ -260,6 +265,7 @@ def business_join():
     user = users_collection.find_one({"_id": ObjectId(user_id)}, {"_id": 0, "hash": 0})
 
     business_id = session["business_id"]
+
 
     query = request.args.get('query', '').lower()
     
@@ -277,7 +283,7 @@ def business_join():
         businesses_html = render_template('business-list.html', businesses=businesses, user=user)
         return {'businesses_html': businesses_html}
     
-    return render_template('business-join.html', user=user, business=business_id, businesses=businesses)
+    return render_template('business-join.html', user=user, business=business_id, businesses=businesses, type=None)
 
 
 @app.route('/apply/<business_id>', methods=['GET'])
@@ -307,9 +313,45 @@ def apply_to_business(business_id):
     return redirect('/business-join')
 
 
-@app.route("/business-dashboard")
+@app.route("/receiver-dashboard")
 @login_required
-def business_dashboard():
+def receiver_dashboard():
+    """Receiver Dashboard"""
+
+    user_id = session["user_id"]
+    user = users_collection.find_one({"_id": ObjectId(user_id)}, {"_id": 0, "hash": 0})
+
+    if session["business_id"] is None:
+        return redirect('/business-join')
+
+    business = businesses_collection.find_one({"_id": ObjectId(session["business_id"])})
+    cur_type = business["type"] if business else None
+
+    requests = []
+
+    for request in business.get('requests', []):
+        item = items_collection.find_one({"_id": request.get('item_id')})
+        if item:
+            bus_id = request.get('bus_id')
+            if bus_id:
+                provider = businesses_collection.find_one({"_id": bus_id})
+                if provider:
+                    requests.append({
+                        "item_name": item.get('name'),
+                        "provider_name": provider.get('name'),
+                        "quantity": request.get('quantity'),
+                        "provider_address": provider.get('address'),
+                        "distance": get_distance(business.get('address'), provider.get('address')),
+                        "status": request.get('status'),
+                        "id": request.get('request_id')
+                    })
+
+    return render_template("receiver-dashboard.html", user=user, business=business, requests=requests, type=cur_type)
+
+
+@app.route("/provider-dashboard")
+@login_required
+def provider_dashboard():
     """Business Dashboard"""
 
     user_id = session["user_id"]
@@ -319,6 +361,7 @@ def business_dashboard():
         return redirect('/business-join')
 
     business = businesses_collection.find_one({"_id": ObjectId(session["business_id"])})
+    cur_type = business["type"] if business else None
 
     applications = []
     
@@ -362,7 +405,7 @@ def business_dashboard():
                         "id": request.get('request_id')
                     })
 
-    return render_template("business-dashboard.html", user=user, business=business, applications=applications, members=members, requests=requests)
+    return render_template("provider-dashboard.html", user=user, business=business, applications=applications, members=members, requests=requests, type=cur_type)
 
 
 @app.route('/manage-applications/<decision>/<user_id>', methods=['GET'])
@@ -390,7 +433,24 @@ def manage_applications(decision, user_id):
         )
         flash("Application rejected successfully!")
     
-    return redirect("/business-dashboard")
+    return redirect("/provider-dashboard")
+
+
+@app.route('/remove-member/<user_id>', methods=['GET'])
+def remove_member(user_id):
+    """Manage applications for a business"""
+
+    businesses_collection.update_one(
+        {"_id": ObjectId(session["business_id"])},
+        {"$pull": {"affiliated_users": ObjectId(user_id)}}
+    )
+    users_collection.update_one(
+        {"_id": ObjectId(user_id)},
+        {"$set": {"business_id": None}}
+    )
+    flash("Member removed successfully!")
+    
+    return redirect("/provider-dashboard")
 
 
 @app.route('/manage-requests/<decision>/<request_id>', methods=['GET'])
@@ -427,20 +487,25 @@ def manage_requests(decision, request_id):
         )
         flash("Request rejected successfully!")
     elif decision == 'confirm':
+        item_name = items_collection.find_one({"_id": item_id}).get('name', 'Item')
         businesses_collection.update_one(
             {"_id": ObjectId(session["business_id"])},
-            {"$pull": {"requests": {"request_id": ObjectId(request_id)}}}
+            {"$push": {"history": {"request_id": ObjectId(request_id), "item": item_name, "qunatity": quantity, "status": "Delivered", "timestamp": datetime.now()}}}
         )
         item_cost = items_collection.find_one({"_id": item_id}).get('price', 0)
         businesses_collection.update_one(
             {"_id": ObjectId(session["business_id"])},
             {"$inc": {"value_donated": +quantity*item_cost, "orders": +1}}
         )
+        businesses_collection.update_one(
+            {"_id": ObjectId(session["business_id"])},
+            {"$pull": {"requests": {"request_id": ObjectId(request_id)}}}
+        )
         flash("Delivery confirmed!")
     else:
         flash("Invalid request!")
     
-    return redirect("/business-dashboard")
+    return redirect("/provider-dashboard")
 
 
 @app.route("/items", methods=["GET"])
@@ -456,8 +521,8 @@ def items():
     cur_business = businesses_collection.find_one({"_id": ObjectId(cur_business_id)})
     cur_type = cur_business["type"] if cur_business else None
 
-    if cur_type == "provider":
-        return redirect('/business-dashboard')
+    if cur_type != "receiver":
+        return redirect('/')
     
     query = request.args.get('query', '').lower()
     
@@ -504,7 +569,7 @@ def items():
         items_html  = render_template('items-list.html', items=items, user=user)
         return {'items_html': items_html}
     
-    return render_template("items.html", user=user, items=items, business=cur_business_id)
+    return render_template("items.html", user=user, items=items, business=cur_business_id, type=cur_type)
 
 
 @app.route("/add-item", methods=["POST"])
@@ -546,10 +611,10 @@ def add_item():
         })
 
         flash("Item added successfully!", "success")
-        return redirect('/business-dashboard')
+        return redirect('/provider-dashboard')
     
     flash("Failed to add item!")
-    return redirect('/business-dashboard')
+    return redirect('/provider-dashboard')
 
 
 @app.route("/request-item", methods=["GET"])
@@ -593,54 +658,134 @@ def request_item():
     return redirect('/items')
 
 
-@app.route("/chat/<user2_id>")
-def chat(user2_id):
-    user1_id = session.get("user_id")  # Get current user ID from session
-    if not user1_id:
-        return redirect(url_for("login"))
+@app.route("/chat/<request_id>")
+@login_required
+def chat(request_id):
+    """Chat Page"""
 
-    # Find or create the chat room
-    chat = mongo.db.chats.find_one({
-        "users": {"$all": [ObjectId(user1_id), ObjectId(user2_id)]}
-    })
+    chat = chats_collection.find_one({"request_id": ObjectId(request_id)})
 
-    if not chat:
-        chat = {
-            "users": [ObjectId(user1_id), ObjectId(user2_id)],
+    user_id = session["user_id"]
+    user = users_collection.find_one({"_id": ObjectId(user_id)}, {"_id": 0, "hash": 0})
+
+    cur_business_id = session["business_id"]
+    cur_type = businesses_collection.find_one({"_id": ObjectId(cur_business_id)})["type"]
+
+    request = businesses_collection.find_one(
+        {"_id": ObjectId(cur_business_id)},
+        {"requests": {"$elemMatch": {"request_id": ObjectId(request_id)}}}
+    )
+
+    print(request_id)
+    print(request)
+
+    if chat:
+        print("Chat found:", chat)
+        if chat["users"][0] != ObjectId(cur_business_id) and chat["users"][1] != ObjectId(cur_business_id):
+            print("User not authorized to view chat.")
+            return redirect("/")
+        
+        user_1 = chat.get("users")[0]
+        
+        if cur_business_id == str(user_1):
+            user_2 = chat.get("users")[1]
+        else:
+            user_2 = chat.get("users")[0]
+            user_1 = chat.get("users")[1]
+
+        user_1_info = businesses_collection.find_one(
+            {"_id": user_1}
+        )
+        user_2_info = businesses_collection.find_one(
+            {"_id": user_2}
+        )
+        item = items_collection.find_one({"_id": chat['item_id']})
+        item_name = str(chat['quantity']) + " " + item['name']
+
+        print("Line 633: ", user_1, user_2)
+        messages = chat["messages"]
+        return render_template("chat.html", user=user, messages=messages, request_id=request_id, user_1=user_1_info, user_2=user_2_info, item_name=item_name, type=cur_type)
+    else:
+        print("Chat not found.")
+
+        chats_collection.insert_one({
+            "request_id": ObjectId(request_id),
+            "item_id": request['requests'][0]['item_id'],
+            "quantity": request['requests'][0]['quantity'],
+            "users": [ObjectId(cur_business_id), ObjectId(request['requests'][0]['bus_id'])],
             "messages": []
-        }
-        mongo.db.chats.insert_one(chat)
+        })
 
-    # Get all messages in the chat
-    messages = chat["messages"]
+    return redirect("/chat/"+request_id)
 
-    return render_template("chat.html", messages=messages, user2_id=user2_id)
+    chat = chats_collection.find_one({"request_id": ObjectId(request_id)})
+
+    user_1 = chat.get("users")[0]
+
+    if cur_business_id == user_1:
+        user_2 = chat.get("users")[1]
+
+    else:
+        user_1 = chat.get("users")[1]
+        user_2 = chat.get("users")[0]
+
+    user_1_info = businesses_collection.find_one(
+        {"_id": ObjectId(user_1)}
+    )
+    user_2_info = businesses_collection.find_one(
+        {"_id": ObjectId(user_2)}
+    )
+    print("Line 655: ", user_1, user_2)
+    
+    return render_template("chat.html", user=user, messages=[], request_id=request_id, user_1=user_1_info, user_2=user_2_info)
 
 
-@app.route("/send-message/<user2_id>", methods=["POST"])
-def send_message(user2_id):
-    user1_id = session.get("user_id")
+@app.route("/send-message/<request_id>", methods=["POST"])
+def send_message(request_id):
+    
+    user_id = session["user_id"]
+    user = users_collection.find_one({"_id": ObjectId(user_id)}, {"_id": 0, "hash": 0})
+
+    cur_business_id = session["business_id"]
+
     message = request.form.get("message")
 
     if not message:
-        return redirect(url_for("chat", user2_id=user2_id))
+        return redirect("/chat/"+request_id)
 
     # Find the chat room
-    chat = mongo.db.chats.find_one({
-        "users": {"$all": [ObjectId(user1_id), ObjectId(user2_id)]}
-    })
+    chat = chats_collection.find_one({"request_id": ObjectId(request_id)})
 
     # Add the new message to the chat
     if chat:
-        mongo.db.chats.update_one(
-            {"_id": chat["_id"]},
-            {"$push": {"messages": {"sender": ObjectId(user1_id), "message": message, "timestamp": datetime.now()}}}
+        chats_collection.update_one(
+            {"request_id": ObjectId(request_id)},
+            {"$push": {"messages": {"sender": ObjectId(cur_business_id), "message": message, "timestamp": datetime.now()}}}
         )
 
-    return redirect(url_for("chat", user2_id=user2_id))
+    return redirect("/chat/"+request_id)
 
 
+# @socketio.on('send_message')
+# def handle_message(data):
+#     user1_id = data['user1_id']
+#     user2_id = data['user2_id']
+#     message = data['message']
 
+#     chat = chats_collection.find_one({
+#         "users": {"$all": [ObjectId(user1_id), ObjectId(user2_id)]}
+#     })
+
+#     if chat:
+#         chats_collection.update_one(
+#             {"_id": chat["_id"]},
+#             {"$push": {"messages": {"sender": ObjectId(user1_id), "message": message, "timestamp": datetime.now()}}}
+#         )
+#         emit('receive_message', {
+#             'sender': user1_id,
+#             'message': message,
+#             'timestamp': datetime.now()
+#         }, room=chat["_id"])
 
 
 @app.route("/credit")

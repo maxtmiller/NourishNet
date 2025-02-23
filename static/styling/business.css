@@ -82,38 +82,30 @@ h2 {
     background-color: #f9f9f9;
 }
 
-.chat-box {
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    padding: 20px;
-    background-color: #f9f9f9;
+.progress-container {
+    width: 80%;
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 15px;
+    border: 1px solid rgba(69, 69, 69, 0.2);
+    margin: auto;
+    overflow: hidden;
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+    height: 30px;
+    position: relative;
+    z-index: 10;
 }
 
-.messages {
-    margin-bottom: 20px;
+.progress-bar {
+    width: 0%;
+    height: 100%;
+    background: linear-gradient(90deg, #00f260, #0575e6);
+    border-radius: 15px;
+    transition: width 2.5s ease-in-out;
+    box-shadow: 0 0 10px rgba(0, 242, 96, 0.8);
+    animation: pulse 1.5s infinite alternate;
 }
 
-.message {
-    margin-bottom: 15px;
-}
-
-.message strong {
-    color: #333;
-}
-
-.message.received {
-    background-color: #e0f7fa;
-    padding: 10px;
-    border-radius: 5px;
-}
-
-.message.sent {
-    background-color: #ffebee;
-    padding: 10px;
-    border-radius: 5px;
-}
-
-.message p {
-    margin: 0;
-    font-size: 1rem;
+@keyframes pulse {
+    0% { box-shadow: 0 0 10px rgba(0, 242, 96, 0.8); }
+    100% { box-shadow: 0 0 20px rgba(5, 117, 230, 0.8); }
 }
