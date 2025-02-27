@@ -1,6 +1,5 @@
 # [`NourishNet`](https://dorahacks.io/buidl/23114)
 
-
 ## About Our Platform
 Our platform is designed to bridge the gap between businesses and charitable organizations, making food donations seamless and rewarding. By leveraging modern technology, we ensure that surplus food reaches those in need efficiently.
 
