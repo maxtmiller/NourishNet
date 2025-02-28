@@ -32,9 +32,7 @@ Session(app)
 
 def get_mongodb_connection():
     """Create and return a new database connection."""
-    # with open('./static/cred.json', 'r') as file:
-    #     uri = json.load(file)['mongoURI']
-
+    
     uri = os.getenv('MONGO_URI')
 
     client = MongoClient(uri, tlsAllowInvalidCertificates=True)
@@ -967,11 +965,8 @@ def about():
 
 @app.route('/google-signin', methods=['POST'])
 def google_signin():
+    """Google Signin"""
 
-    # with open('./static/cred.json', 'r') as file:
-    #     data = json.load(file)['clientID']
-        
-    # YOUR_CLIENT_ID = data
     YOUR_CLIENT_ID = os.getenv('CLIENT_ID')
 
     id_token_received = request.form['id_token']
