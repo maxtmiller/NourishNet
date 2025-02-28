@@ -23,6 +23,7 @@ We believe in reducing food waste while helping communities. Our goal is to crea
   - Cohere (AI/ML integrations)
   - Google Auth (for authentication)
   - OpenCage (for geolocation services)
+  - SocketIO (for live chat)
 
 ## How to Run the Project
 ### Prerequisites
