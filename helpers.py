@@ -3,6 +3,10 @@ import string
 import re
 import json
 import requests
+import os
+
+from dotenv import load_dotenv
+load_dotenv()
 
 from opencage.geocoder import OpenCageGeocode
 from pprint import pprint
@@ -76,8 +80,10 @@ def valid_email(email):
 # Calculates distance between two locations
 def get_distance(origin, destination):
 
-    with open('./static/cred.json', 'r') as file:
-        api_key = json.load(file)['mapsAPI']
+    # with open('./static/cred.json', 'r') as file:
+    #     api_key = json.load(file)['mapsAPI']
+
+    api_key = os.getenv("MAPS_API")
 
     base_url = "https://maps.googleapis.com/maps/api/distancematrix/json"
     params = {
@@ -99,8 +105,10 @@ def get_distance(origin, destination):
 # Gets coordinates of a location
 def get_coordinates(address):
 
-    with open('./static/cred.json', 'r') as file:
-        api_key = json.load(file)['openCageAPI']
+    # with open('./static/cred.json', 'r') as file:
+    #     api_key = json.load(file)['openCageAPI']
+
+    api_key = os.getenv("OPENCAGE_API")
 
     geocoder = OpenCageGeocode(api_key)
 

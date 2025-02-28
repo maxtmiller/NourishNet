@@ -1,5 +1,9 @@
 import requests
 import json
+import os
+
+from dotenv import load_dotenv
+load_dotenv()
 
 from pymongo.mongo_client import MongoClient
 from datetime import datetime
@@ -28,8 +32,11 @@ Session(app)
 
 def get_mongodb_connection():
     """Create and return a new database connection."""
-    with open('./static/cred.json', 'r') as file:
-        uri = json.load(file)['mongoURI']
+    # with open('./static/cred.json', 'r') as file:
+    #     uri = json.load(file)['mongoURI']
+
+    uri = os.getenv('MONGO_URI')
+
     client = MongoClient(uri, tlsAllowInvalidCertificates=True)
     try:
         client.admin.command('ping')
@@ -961,10 +968,11 @@ def about():
 @app.route('/google-signin', methods=['POST'])
 def google_signin():
 
-    with open('./static/cred.json', 'r') as file:
-        data = json.load(file)['clientID']
+    # with open('./static/cred.json', 'r') as file:
+    #     data = json.load(file)['clientID']
         
-    YOUR_CLIENT_ID = data
+    # YOUR_CLIENT_ID = data
+    YOUR_CLIENT_ID = os.getenv('CLIENT_ID')
 
     id_token_received = request.form['id_token']
 
@@ -1015,5 +1023,5 @@ def google_signin():
 
 if __name__ == "__main__":
     # app.run(host="0.0.0.0", port="3000", debug=True)
-    socketio.run(app, host="0.0.0.0",port="3000", debug=True)
-
+    port = int(os.getenv('PORT', 5000))
+    socketio.run(app, host="0.0.0.0",port=port, debug=True)

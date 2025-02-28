@@ -1,7 +1,10 @@
-flask
-flask_session
 requests
-gunicorn
-google-auth
+flask
+flask-session
+werkzeug
 pymongo
+flask-socketio
+google-auth
+google-auth-oauthlib
 opencage
+python-dotenv
