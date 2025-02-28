@@ -191,7 +191,22 @@
             </div>
         </section>
     </div>
+    <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
     <script>
+        const socket = io.connect("http://localhost:3000");
+
+        // Function to leave the chat
+        function leaveChat() {
+            socket.emit('leave_chat');  // Tell the server we're leaving
+            socket.disconnect();        // Disconnect from the server
+            console.log("Disconnected from chat.");
+        }
+
+        // Handle server-side disconnection confirmation
+        socket.on('chat_disconnected', function() {
+            console.log("You have been disconnected from the chat.");
+        });
+
         document.addEventListener("DOMContentLoaded", function () {
 
             const donatedValue = parseFloat(progressBar.dataset.value) || 0;

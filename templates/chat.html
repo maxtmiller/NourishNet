@@ -18,17 +18,68 @@
         {% endfor %}
     </div>
     <div id="message-box">
-        <form id="messageForm" action="/send-message/{{ request_id }}" method="POST">
+        <form id="messageForm">
             <input type="text" id="messageInput" name="message" placeholder="Type a message..." required>
             <button type="button" onclick="sendMessage()">➤</button>
         </form>
     </div>
+    <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
     <script>
+        const socket = io.connect("http://localhost:3000");
+        const requestId = "{{ request_id }}";
+        socket.emit('join_chat', requestId);
+
+        function scrollToBottom() {
+            const chatContainer = document.getElementById("chat-container");
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        socket.on('new_message', function(data) {
+
+            const messageContainer = document.createElement('div');
+            messageContainer.classList.add('message');
+            if (data.sender === "{{ user_1._id }}") {
+                messageContainer.classList.add('sent');
+            } else {
+                messageContainer.classList.add('received');
+            }
+
+            const messageContent = document.createElement('div');
+            messageContent.classList.add('message-content');
+
+            const messageText = document.createElement('p');
+            messageText.textContent = data.message;
+            messageContent.appendChild(messageText);
+
+            const messageTimestamp = document.createElement('small');
+            messageTimestamp.textContent = data.timestamp;
+            messageContent.appendChild(messageTimestamp);
+
+            messageContainer.appendChild(messageContent);
+            document.getElementById('chat-container').appendChild(messageContainer);
+
+            scrollToBottom();
+        });
+
+        document.getElementById("messageForm").addEventListener("submit", function(event) {
+            event.preventDefault();
+            sendMessage();
+        });
+
         function sendMessage() {
             const message = document.getElementById("messageInput").value;
             if (message.trim() !== "") {
-                document.getElementById("messageForm").submit();
+
+                socket.emit('send_message', {
+                    message: message,
+                    request_id: requestId,
+                    sender: "{{ user_1._id }}"
+                });
+
+                document.getElementById("messageInput").value = '';
             }
         }
+
+        window.onload = scrollToBottom;
     </script>
 {% endblock %}

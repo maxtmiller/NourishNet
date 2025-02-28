@@ -7,6 +7,8 @@ import requests
 from opencage.geocoder import OpenCageGeocode
 from pprint import pprint
 
+from datetime import datetime, timedelta
+
 from functools import wraps
 from flask import redirect, session, request, current_app
 
@@ -108,3 +110,23 @@ def get_coordinates(address):
         return results[0]['geometry']
     else:
         return None
+    
+
+# Converts a datetime object to a human-readable relative time format
+def time_ago(timestamp):
+    """Convert a datetime object to a human-readable relative time format."""
+
+    now = datetime.now()
+    
+    diff = now - timestamp
+    
+    if diff < timedelta(minutes=1):
+        return "Just now"
+    elif diff < timedelta(hours=1):
+        return f"{diff.seconds // 60} minutes ago"
+    elif diff < timedelta(days=1):
+        return f"{diff.seconds // 3600} hours ago"
+    elif diff < timedelta(weeks=1):
+        return f"{diff.days} days ago"
+    else:
+        return f"{diff.days // 7} weeks ago"

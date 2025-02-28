@@ -9,13 +9,16 @@ from flask import Flask, flash, redirect, render_template, session, request, jso
 from flask_session import Session
 
 from werkzeug.security import check_password_hash, generate_password_hash
-from helpers import login_required, before_first_request, clear_session, generate_password, valid_email, get_distance, get_coordinates
+from helpers import login_required, before_first_request, clear_session, generate_password, valid_email, get_distance, get_coordinates, time_ago
 
 from google.oauth2 import id_token
 from google.auth.transport import requests
 
+from flask_socketio import SocketIO, send, emit, join_room, leave_room, disconnect
+
 
 app = Flask(__name__)
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 
 app.config["SESSION_PERMANENT"] = False
@@ -494,6 +497,7 @@ def manage_requests(decision, request_id):
             {"_id": bus_id},
             {"$pull": {"orders": {"request_id": ObjectId(request_id)}}}
         )
+        leave_room(request_id)
         flash("Delivery confirmed!")
     else:
         flash("Invalid request!")
@@ -646,6 +650,8 @@ def request_item():
     if not business:
         flash("Business not found.")
         return redirect('/items')
+    
+    emit_new_request(item, quantity, cur_business_id)
 
     flash(f"Request for {quantity} {item['name']}s submitted successfully!")
     return redirect('/items')
@@ -709,9 +715,6 @@ def chat(request_id):
             {"orders": {"$elemMatch": {"request_id": ObjectId(request_id)}}}
         )
 
-    print(request_id)
-    print(request)
-
     if chat:
         print("Chat found:", chat)
         if chat["users"][0] != ObjectId(cur_business_id) and chat["users"][1] != ObjectId(cur_business_id):
@@ -735,8 +738,10 @@ def chat(request_id):
         item = items_collection.find_one({"_id": chat['item_id']})
         item_name = str(chat['quantity']) + " " + item['name']
 
-        print("Line 633: ", user_1, user_2)
         messages = chat["messages"]
+        for msg in messages:
+            msg['timestamp'] = time_ago(msg["timestamp"])
+
         return render_template("chat.html", user=user, messages=messages, request_id=request_id, user_1=user_1_info, user_2=user_2_info, item_name=item_name, type=cur_type)
     else:
         print("Chat not found.")
@@ -751,7 +756,6 @@ def chat(request_id):
                 "messages": []
             })
         else:
-            print(request['orders'][0])
             item = items_collection.find_one({"_id": request['orders'][0]['item_id']})
             bus_id = item['business_id']
 
@@ -766,28 +770,30 @@ def chat(request_id):
     return redirect("/chat/"+request_id)
 
 
-@app.route("/send-message/<request_id>", methods=["POST"])
-def send_message(request_id):
-    
-    user_id = session["user_id"]
-    user = users_collection.find_one({"_id": ObjectId(user_id)}, {"_id": 0, "hash": 0})
-
-    cur_business_id = session["business_id"]
-
-    message = request.form.get("message")
-
-    if not message:
-        return redirect("/chat/"+request_id)
+@socketio.on('send_message')
+def handle_message(data):
+    request_id = data['request_id']
+    message = data['message']
+    cur_business_id = data['sender']
 
     chat = chats_collection.find_one({"request_id": ObjectId(request_id)})
 
     if chat:
+        print("socket send")
         chats_collection.update_one(
             {"request_id": ObjectId(request_id)},
             {"$push": {"messages": {"sender": ObjectId(cur_business_id), "message": message, "timestamp": datetime.now()}}}
         )
+    
+    socketio.emit('new_message', {'message': message, 'sender': cur_business_id, 'timestamp': time_ago(datetime.now())}, room=request_id)
 
-    return redirect("/chat/"+request_id)
+
+@socketio.on('join_chat')
+def on_chat_join(request_id):
+    """Join the chat room for the given request_id"""
+    room = request_id
+    join_room(room)
+    print(f"User joined room: {room}")
 
 
 @app.route("/settings", methods=["GET", "POST"] )
@@ -1008,4 +1014,6 @@ def google_signin():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port="3000", debug=True)
+    # app.run(host="0.0.0.0", port="3000", debug=True)
+    socketio.run(app, host="0.0.0.0",port="3000", debug=True)
+
